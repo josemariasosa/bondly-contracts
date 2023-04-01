@@ -51,7 +51,7 @@ contract OrganizationVault is Ownable {
         address[] memory _owners,
         // address _owners,
         uint256 _approval_threshold
-    ) public onlyOwner {
+    ) external onlyOwner {
         // TODO: require the _id to exist in Cedalio.
         console.log("ACA 1");
         require(true, "Organization ID not found in db.");

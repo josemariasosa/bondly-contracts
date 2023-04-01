@@ -56,14 +56,14 @@ async function basicVaultSetupFixture() {
   } = await loadFixture(deployVaultFixture);
 
   console.log("ARE WE EVEN HERE???????")
-  await OrganizationVaultContract.connect(owner).createOrganization(
+  const createOrg = await OrganizationVaultContract.connect(owner).createOrganization(
     "207760f2-fdd3-4397-80cc-a51093ccbf18",
-    
-    [alice.address, bob.address, carl.address],
-    // [alice.address],
+    // [alice.address, bob.address, carl.address],
+    [alice.address],
     // alice.address,
     2
   );
+  await createOrg.wait(1);
   console.log("OR HERE?")
 
   return {
