@@ -1,0 +1,28 @@
+type Organization {
+  id: UUID!
+  name: String!
+  owners: [String!]
+}
+
+type Project {
+  id: UUID!
+  name: String
+  description: String
+  start_datetime: String
+  end_datetime: String
+  budget: Int
+  organization: Organization! @belongsTo(via:"comments")
+}
+
+type Movement {
+  id: UUID!
+  title: String!
+  description: String
+  amount: Int!
+  token: String!
+  content: String!
+  pay_to_address: String!
+  tag: String
+  organization: Organization! @belongsTo(via:"movements")
+  project: Project! @belongsTo(via:"movements")
+}
