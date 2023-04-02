@@ -1,5 +1,21 @@
-# king-of-dev
-King of Devs Hackathon Buenos Aires
+# Bondly (Smart Contract for King of Devs Hackathon)
+
+Buenos Aires - Argentina
+
+## Introduction
+
+The backend for the Bondly app is composed by two blocks:
+
+1. The `OrganizationVault` smart contract.
+2. The **Cedalio** database.
+
+In order to relate the information between the two backends we are using the `id`s in UUID created by Cedalio. An example looks:
+
+```graphql
+{
+  "id": "207760f2-fdd3-4397-80cc-a51093ccbf18"
+}
+```
 
 
 Complile the schema
