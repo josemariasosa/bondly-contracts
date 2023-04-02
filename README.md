@@ -69,7 +69,7 @@ Create the principal objects to generate an ID the users could use in the smart 
 mutation {
   createOrganization(organization: {
     name: "My First Organization"
-  	owners: ["alice.address", "bob.address", "carl.address"]
+    owners: ["alice.address", "bob.address", "carl.address"]
   }) {
     txHash
     organization {
@@ -99,11 +99,11 @@ Now, is time to create a new project.
 mutation {
   createProject(project: {
     name: "Podcast Event"
-  	description: "This is an event for a Web3 podcast."
-  	start_datetime: "2023-04-04"
-  	end_datetime: "2023-04-04"
-  	budget: 300
-  	organization: "c9dfdef5-4977-4467-80b9-82453be07ec1"
+    description: "This is an event for a Web3 podcast."
+    start_datetime: "2023-04-04"
+    end_datetime: "2023-04-04"
+    budget: 300
+    organization: "c9dfdef5-4977-4467-80b9-82453be07ec1"
   }) {
     txHash
     project {
@@ -118,15 +118,15 @@ And last, create a new movement, to be submited to approval.
 ```graphql
 mutation {
   createMovement(movement: {
-  	title: "Pagar Pizzas"
-  	description: "Las pizzas mas ricas del mundo"
-  	amount: 199
-  	token: "USDT"
+    title: "Pagar Pizzas"
+    description: "Las pizzas mas ricas del mundo"
+    amount: 199
+    token: "USDT"
     content: "link/to/online/content"
-  	pay_to_address: "pizzaShop.address"
-  	tag: "comida"
-  	organization: "c9dfdef5-4977-4467-80b9-82453be07ec1"
-  	project: "fe2f8dfa-0c6e-4d60-ba62-efc1c1dcd712"
+    pay_to_address: "pizzaShop.address"
+    tag: "comida"
+    organization: "c9dfdef5-4977-4467-80b9-82453be07ec1"
+    project: "fe2f8dfa-0c6e-4d60-ba62-efc1c1dcd712"
   }) {
     txHash
     movement {
