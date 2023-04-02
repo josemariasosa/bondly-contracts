@@ -2,6 +2,8 @@ type Organization {
   id: UUID!
   name: String!
   owners: [String!]
+  projects: [Project] @relation(type: REFERENCES)
+  movements: [Movement] @relation(type: REFERENCES)
 }
 
 type Project {
@@ -11,7 +13,8 @@ type Project {
   start_datetime: String
   end_datetime: String
   budget: Int
-  organization: Organization! @belongsTo(via:"comments")
+  movements: [Movement] @relation(type: REFERENCES)
+  organization: Organization! @belongsTo(via:"projects")
 }
 
 type Movement {
