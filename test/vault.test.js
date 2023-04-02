@@ -26,11 +26,9 @@ describe("Organization Vault - King of Devs 🧠", function () {
         carl,
         pizzaShop
       } = await loadFixture(basicVaultSetupFixture);
-      console.log("Esto si funciona?");
-
-      console.log("TEST: %s", await OrganizationVaultContract.getOrganization("207760f2-fdd3-4397-80cc-a51093ccbf18"));
 
       expect(await OrganizationVaultContract.totalOrganizations()).to.equal(1);
+      expect(await OrganizationVaultContract.totalProjects()).to.equal(1);
     });
   });
 });
