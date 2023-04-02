@@ -26,13 +26,15 @@ describe("Organization Vault - King of Devs 🧠", function () {
     });
 
     it("Should have a correct initial setup.", async function () {
-    const {
+      const {
         OrganizationVaultContract
       } = await loadFixture(basicVaultSetupFixture);
 
       expect(await OrganizationVaultContract.totalOrganizations()).to.equal(1);
       expect(await OrganizationVaultContract.totalProjects()).to.equal(1);
-      expect(await OrganizationVaultContract.getOrganizationBalance(ORGANIZATION_ID_TEST)).to.equal(ORGANIZATION_INITIAL_BALANCE);
+      expect(
+        await OrganizationVaultContract.getOrganizationBalance(ORGANIZATION_ID_TEST)
+      ).to.equal(ORGANIZATION_INITIAL_BALANCE);
     });
   });
 
@@ -57,8 +59,8 @@ describe("Organization Vault - King of Devs 🧠", function () {
       expect(await OrganizationVaultContract.totalMovements()).to.equal(1);
     });
 
-    it("Should have a correct initial setup.", async function () {
-    const {
+    it("Should approve a movement.", async function () {
+      const {
         USDTokenContract,
         OrganizationVaultContract,
         owner,
@@ -68,8 +70,27 @@ describe("Organization Vault - King of Devs 🧠", function () {
         pizzaShop
       } = await loadFixture(basicVaultSetupFixture);
 
-      expect(await OrganizationVaultContract.totalOrganizations()).to.equal(1);
-      expect(await OrganizationVaultContract.totalProjects()).to.equal(1);
+      await OrganizationVaultContract.connect(bob).createMovement(
+        MOVEMENT_ID_TEST,
+        PROJECT_ID_TEST,
+        ORGANIZATION_ID_TEST,
+        PIZZA_PRICE,
+        pizzaShop.address
+      );
+
+      await expect(
+        OrganizationVaultContract.connect(bob).approveMovement(
+          MOVEMENT_ID_TEST,
+          ORGANIZATION_ID_TEST
+        )
+      ).to.be.revertedWith("CANNOT_BE_PROPOSED_AND_APPROVED_BY_SAME_USER");
+
+      expect(await USDTokenContract.balanceOf(pizzaShop.address)).to.equal(0);
+      await OrganizationVaultContract.connect(alice).approveMovement(
+        MOVEMENT_ID_TEST,
+        ORGANIZATION_ID_TEST
+      );
+      expect(await USDTokenContract.balanceOf(pizzaShop.address)).to.equal(PIZZA_PRICE);
     });
   });
 });

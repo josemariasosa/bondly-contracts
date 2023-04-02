@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-// import "./interfaces/IStakingManager.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -34,6 +33,7 @@ contract OrganizationVault is Ownable {
         address[] approvedBy;
         address[] rejectedBy;
         bool payed;
+        bool rejected;
     }
 
     mapping(bytes32 => Organization) public organizations;
@@ -69,6 +69,7 @@ contract OrganizationVault is Ownable {
         // TODO: require the _id to exist in Cedalio.
         require(true, "Organization ID not found in db.");
         require(_approval_threshold <= _owners.length, "INCORRECT_APPROVAL_THRESHOLD");
+        require(_approval_threshold > 0, "APPROVAL_THRESHOLD_CANNOT_BE_ZERO");
 
         bytes32 hash_id = keccak256(abi.encodePacked(_id));
         require(!organizationHashIds.contains(hash_id), "ORGANIZATION_ID_ALREADY_EXISTS");
@@ -124,6 +125,22 @@ contract OrganizationVault is Ownable {
         movementHashIds.add(hash_id);
     }
 
+    function approveMovement(
+        string memory _movementId,
+        string memory _organizationId
+    ) external onlyOrganizationOwner(_organizationId) {
+        bytes32 hash_id = keccak256(abi.encodePacked(_movementId));
+        require(movementHashIds.contains(hash_id), "MOVEMENT_ID_DOES_NOT_EXIST");
+        Movement storage movement = movements[hash_id];
+
+        require(msg.sender != movement.proposedBy, "CANNOT_BE_PROPOSED_AND_APPROVED_BY_SAME_USER");
+        require(!_accountInArray(msg.sender, movement.approvedBy), "USER_ALREADY_APPROVED_MOVEMENT");
+        require(!_accountInArray(msg.sender, movement.rejectedBy), "USER_ALREADY_REJECTED_MOVEMENT");
+
+        movement.approvedBy.push(msg.sender);
+        _evaluateMovement(hash_id, _organizationId);
+    }
+
     function fundOrganization(string memory _organizationId, uint256 _amount) public {
         bytes32 hash_id = keccak256(abi.encodePacked(_organizationId));
         Organization storage organization = organizations[hash_id];
@@ -143,6 +160,13 @@ contract OrganizationVault is Ownable {
 
     function getOrganizationBalance(string memory _id) public view returns (uint256) {
         return getOrganization(_id).balance;
+    }
+
+    function getOrganizationThreshold(
+        string memory _id
+    ) public view returns (uint256 _totalOwners, uint256 _threshold) {
+        Organization memory organization = getOrganization(_id);
+        return (organization.owners.length, organization.approval_threshold);
     }
 
     function totalOrganizations() external view returns (uint256) {
@@ -169,5 +193,19 @@ contract OrganizationVault is Ownable {
             }
         }
         return doesListContainElement;
+    }
+
+    function _evaluateMovement(bytes32 _movementHashId, string memory _organizationId) private {
+        Movement storage movement = movements[_movementHashId];
+        (uint256 totalOwners, uint256 threshold) = getOrganizationThreshold(_organizationId);
+        // If the movement was already payed or rejected, then there is nothing to evaluate.
+        if (!movement.payed && !movement.rejected) {
+            if (movement.approvedBy.length >= (threshold - 1)) {
+                movement.payed = true;
+                IERC20(baseToken).safeTransfer(movement.payTo, movement.amount);
+            } else if (movement.rejectedBy.length > (totalOwners - threshold)) {
+                movement.rejected = true;
+            }
+        }
     }
 }
