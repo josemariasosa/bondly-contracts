@@ -108,7 +108,8 @@ contract OrganizationVault is Ownable {
         bytes32 hash_id = keccak256(abi.encodePacked(_movementId));
         require(!movementHashIds.contains(hash_id), "MOVEMENT_ID_ALREADY_EXISTS");
 
-        Organization storage organization = organizations[hash_id];
+        bytes32 organization_hash_id = keccak256(abi.encodePacked(_organizationId));
+        Organization storage organization = organizations[organization_hash_id];
         require(organization.balance >= _amount, "NOT_ENOUGH_ORGANIZATION_FUNDS");
         organization.balance -= _amount;
 
@@ -123,6 +124,13 @@ contract OrganizationVault is Ownable {
         movementHashIds.add(hash_id);
     }
 
+    function fundOrganization(string memory _organizationId, uint256 _amount) public {
+        bytes32 hash_id = keccak256(abi.encodePacked(_organizationId));
+        Organization storage organization = organizations[hash_id];
+        organization.balance += _amount;
+        IERC20(baseToken).safeTransferFrom(msg.sender, address(this), _amount);
+    }
+
     function getOrganization(string memory _id) public view returns (Organization memory) {
         bytes32 hash_id = keccak256(abi.encodePacked(_id));
         if (organizationHashIds.contains(hash_id)) {
@@ -131,6 +139,10 @@ contract OrganizationVault is Ownable {
         } else {
             revert("ORGANIZATION_ID_DOES_NOT_EXIST");
         }
+    }
+
+    function getOrganizationBalance(string memory _id) public view returns (uint256) {
+        return getOrganization(_id).balance;
     }
 
     function totalOrganizations() external view returns (uint256) {

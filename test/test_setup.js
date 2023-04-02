@@ -7,6 +7,7 @@ const ORGANIZATION_ID_TEST = "207760f2-fdd3-4397-80cc-a51093ccbf18";
 const PROJECT_ID_TEST = "fe2f8dfa-0c6e-4d60-ba62-efc1c1dcd712";
 const MOVEMENT_ID_TEST = "7bf23fc6-99be-4c99-b8cd-816bf4c1b263";
 const PIZZA_PRICE = ethers.BigNumber.from(199).mul(DECIMALS);
+const ORGANIZATION_INITIAL_BALANCE = ethers.BigNumber.from(1_000).mul(DECIMALS);
 
 async function deployVaultFixture() {
   // Get the ContractFactory and Signers here.
@@ -91,6 +92,10 @@ async function basicVaultSetupFixture() {
     )
   ).to.be.revertedWith("NOT_ENOUGH_ORGANIZATION_FUNDS");
 
+  expect(await OrganizationVaultContract.getOrganizationBalance(ORGANIZATION_ID_TEST)).to.equal(0);
+  await USDTokenContract.connect(owner).approve(OrganizationVaultContract.address, ORGANIZATION_INITIAL_BALANCE);
+  await OrganizationVaultContract.connect(owner).fundOrganization(ORGANIZATION_ID_TEST, ORGANIZATION_INITIAL_BALANCE);
+
   return {
     USDTokenContract,
     OrganizationVaultContract,
@@ -109,5 +114,6 @@ module.exports = {
   ORGANIZATION_ID_TEST,
   PROJECT_ID_TEST,
   MOVEMENT_ID_TEST,
-  PIZZA_PRICE
+  PIZZA_PRICE,
+  ORGANIZATION_INITIAL_BALANCE
 };
