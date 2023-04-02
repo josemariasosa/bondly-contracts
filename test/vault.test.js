@@ -63,10 +63,8 @@ describe("Organization Vault - King of Devs 🧠", function () {
       const {
         USDTokenContract,
         OrganizationVaultContract,
-        owner,
         alice,
         bob,
-        carl,
         pizzaShop
       } = await loadFixture(basicVaultSetupFixture);
 
@@ -91,6 +89,82 @@ describe("Organization Vault - King of Devs 🧠", function () {
         ORGANIZATION_ID_TEST
       );
       expect(await USDTokenContract.balanceOf(pizzaShop.address)).to.equal(PIZZA_PRICE);
+    });
+
+    it("Should reject a movement, but after 2nd approval, send the funds.", async function () {
+      const {
+        USDTokenContract,
+        OrganizationVaultContract,
+        alice,
+        bob,
+        carl,
+        pizzaShop
+      } = await loadFixture(basicVaultSetupFixture);
+
+      await OrganizationVaultContract.connect(bob).createMovement(
+        MOVEMENT_ID_TEST,
+        PROJECT_ID_TEST,
+        ORGANIZATION_ID_TEST,
+        PIZZA_PRICE,
+        pizzaShop.address
+      );
+
+      await expect(
+        OrganizationVaultContract.connect(bob).rejectMovement(
+          MOVEMENT_ID_TEST,
+          ORGANIZATION_ID_TEST
+        )
+      ).to.be.revertedWith("CANNOT_BE_PROPOSED_AND_REJECTED_BY_SAME_USER");
+
+      expect(await USDTokenContract.balanceOf(pizzaShop.address)).to.equal(0);
+      await OrganizationVaultContract.connect(alice).rejectMovement(
+        MOVEMENT_ID_TEST,
+        ORGANIZATION_ID_TEST
+      );
+      expect(await USDTokenContract.balanceOf(pizzaShop.address)).to.equal(0);
+      await OrganizationVaultContract.connect(carl).approveMovement(
+        MOVEMENT_ID_TEST,
+        ORGANIZATION_ID_TEST
+      );
+      expect(await USDTokenContract.balanceOf(pizzaShop.address)).to.equal(PIZZA_PRICE);
+    });
+
+    it("Should reject a movement altogether and return the funds to the Organization.", async function () {
+      const {
+        USDTokenContract,
+        OrganizationVaultContract,
+        alice,
+        bob,
+        carl,
+        pizzaShop
+      } = await loadFixture(basicVaultSetupFixture);
+
+      await OrganizationVaultContract.connect(bob).createMovement(
+        MOVEMENT_ID_TEST,
+        PROJECT_ID_TEST,
+        ORGANIZATION_ID_TEST,
+        PIZZA_PRICE,
+        pizzaShop.address
+      );
+
+      const organizationBalance = await OrganizationVaultContract.getOrganizationBalance(ORGANIZATION_ID_TEST);
+
+      expect(await USDTokenContract.balanceOf(pizzaShop.address)).to.equal(0);
+      await OrganizationVaultContract.connect(alice).rejectMovement(
+        MOVEMENT_ID_TEST,
+        ORGANIZATION_ID_TEST
+      );
+      expect(await USDTokenContract.balanceOf(pizzaShop.address)).to.equal(0);
+      await OrganizationVaultContract.connect(carl).rejectMovement(
+        MOVEMENT_ID_TEST,
+        ORGANIZATION_ID_TEST
+      );
+      expect(await USDTokenContract.balanceOf(pizzaShop.address)).to.equal(0);
+      expect(
+        await OrganizationVaultContract.getOrganizationBalance(ORGANIZATION_ID_TEST)
+      ).to.equal(
+        organizationBalance.add(PIZZA_PRICE)
+      );
     });
   });
 });

@@ -141,6 +141,22 @@ contract OrganizationVault is Ownable {
         _evaluateMovement(hash_id, _organizationId);
     }
 
+    function rejectMovement(
+        string memory _movementId,
+        string memory _organizationId
+    ) external onlyOrganizationOwner(_organizationId) {
+        bytes32 hash_id = keccak256(abi.encodePacked(_movementId));
+        require(movementHashIds.contains(hash_id), "MOVEMENT_ID_DOES_NOT_EXIST");
+        Movement storage movement = movements[hash_id];
+
+        require(msg.sender != movement.proposedBy, "CANNOT_BE_PROPOSED_AND_REJECTED_BY_SAME_USER");
+        require(!_accountInArray(msg.sender, movement.approvedBy), "USER_ALREADY_APPROVED_MOVEMENT");
+        require(!_accountInArray(msg.sender, movement.rejectedBy), "USER_ALREADY_REJECTED_MOVEMENT");
+
+        movement.rejectedBy.push(msg.sender);
+        _evaluateMovement(hash_id, _organizationId);
+    }
+
     function fundOrganization(string memory _organizationId, uint256 _amount) public {
         bytes32 hash_id = keccak256(abi.encodePacked(_organizationId));
         Organization storage organization = organizations[hash_id];
@@ -205,6 +221,9 @@ contract OrganizationVault is Ownable {
                 IERC20(baseToken).safeTransfer(movement.payTo, movement.amount);
             } else if (movement.rejectedBy.length > (totalOwners - threshold)) {
                 movement.rejected = true;
+                bytes32 hash_id = keccak256(abi.encodePacked(_organizationId));
+                Organization storage organization = organizations[hash_id];
+                organization.balance += movement.amount;
             }
         }
     }
