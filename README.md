@@ -135,3 +135,15 @@ mutation {
   }
 }
 ```
+
+## Deployment
+
+Smart contract was deployed in ETH Goerli.
+
+```text
+Addresses of the deployed contracts:
+ - OrganizationVault:  0x9fea0ED05e44A6b759fa1f9C5228b464Bf31C1cB
+ - Goerli USDT Token:  0x509ee0d083ddf8ac028f2a56731412edd63223b9
+ ```
+
+ Deployment transaction: https://goerli.etherscan.io/tx/0xe1de38996e9cf488e1832bda680b192e1542259ac0fb8e9d2143c85a1323ddec
