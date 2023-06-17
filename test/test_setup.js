@@ -3,16 +3,23 @@ const { ethers } = require("hardhat");
 const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers");
 
 const DECIMALS = ethers.BigNumber.from(10).pow(18);
-const ORGANIZATION_ID_TEST = "207760f2-fdd3-4397-80cc-a51093ccbf18";
-const PROJECT_ID_TEST = "fe2f8dfa-0c6e-4d60-ba62-efc1c1dcd712";
-const MOVEMENT_ID_TEST = "7bf23fc6-99be-4c99-b8cd-816bf4c1b263";
-const PIZZA_PRICE = ethers.BigNumber.from(199).mul(DECIMALS);
-const ORGANIZATION_INITIAL_BALANCE = ethers.BigNumber.from(1_000).mul(DECIMALS);
+const PROJECT_SLUG_TEST = "bondly-irl-meeting";
+const MOVEMENT_SLUG_TEST = "dinner-pizza";
 
-async function deployVaultFixture() {
+// Using USDC mock stable coin.
+const PIZZA_PRICE = ethers.BigNumber.from(199).mul(DECIMALS);
+
+const PROJECT_INITIAL_BALANCE_AVAX = ethers.utils.parseEther('10.0');
+const PROJECT_INITIAL_BALANCE_STABLE = ethers.utils.parseEther('0.0');
+
+// Fee in AVAX.
+const PROJECT_CREATION_FEE = ethers.utils.parseEther('0.01').mul(DECIMALS);
+const MOVEMENT_CREATION_FEE = ethers.BigNumber.from(0.00).mul(DECIMALS);
+
+async function deployBondlyFixture() {
   // Get the ContractFactory and Signers here.
   const USDToken = await ethers.getContractFactory("Token");
-  const OrganizationVault = await ethers.getContractFactory("OrganizationVault");
+  const Bondly = await ethers.getContractFactory("Bondly");
 
   const [
     owner,
@@ -31,16 +38,19 @@ async function deployVaultFixture() {
   );
   await USDTokenContract.deployed();
 
-  const OrganizationVaultContract = await OrganizationVault.connect(owner).deploy(
-    USDTokenContract.address
+  const BondlyContract = await Bondly.connect(owner).deploy(
+    [USDTokenContract.address],
+    PROJECT_CREATION_FEE,
+    MOVEMENT_CREATION_FEE
   );
+  await BondlyContract.deployed();
 
-  expect(await OrganizationVaultContract.totalOrganizations()).to.equal(0);
+  expect(await BondlyContract.getTotalProjects()).to.equal(0);
 
   // Fixtures can return anything you consider useful for your tests
   return {
     USDTokenContract,
-    OrganizationVaultContract,
+    BondlyContract,
     owner,
     alice,
     bob,
@@ -49,56 +59,67 @@ async function deployVaultFixture() {
   };
 }
 
-async function basicVaultSetupFixture() {
+async function basicBondlySetupFixture() {
   const {
     USDTokenContract,
-    OrganizationVaultContract,
+    BondlyContract,
     owner,
     alice,
     bob,
     carl,
     pizzaShop
-  } = await loadFixture(deployVaultFixture);
+  } = await loadFixture(deployBondlyFixture);
+
+//   function createProject(
+//     string memory _projectSlug,
+//     address[] memory _owners,
+//     uint32 _approvalThreshold,
+//     address _currency
+// )
 
   await expect(
-    OrganizationVaultContract.connect(owner).createOrganization(
-      ORGANIZATION_ID_TEST,
+    BondlyContract.connect(owner).createProject(
+      PROJECT_SLUG_TEST,
       [alice.address],
-      2
+      2,
+      USDTokenContract.address,
+      // { value: PROJECT_CREATION_FEE.toString() }
     )
   ).to.be.revertedWith("INCORRECT_APPROVAL_THRESHOLD");
 
-  await OrganizationVaultContract.connect(owner).createOrganization(
-    ORGANIZATION_ID_TEST,
-    [alice.address, bob.address, carl.address],
-    2
-  );
+  console.log("Jose cute");
 
-  // IMPORTANT: This was used to fix the error with the block mining.
-  // await createOrg.wait(1);
+  // await BondlyContract.connect(owner).createOrganization(
+  //   ORGANIZATION_ID_TEST,
+  //   [alice.address, bob.address, carl.address],
+  //   2
+  // );
 
-  await OrganizationVaultContract.connect(alice).createProject(
-    PROJECT_ID_TEST,
-    ORGANIZATION_ID_TEST
-  );
+  // // IMPORTANT: This was used to fix the error with the block mining.
+  // // await createOrg.wait(1);
 
-  await expect(
-    OrganizationVaultContract.connect(bob).createMovement(
-      MOVEMENT_ID_TEST,
-      PROJECT_ID_TEST,
-      ORGANIZATION_ID_TEST,
-      PIZZA_PRICE,
-      pizzaShop.address
-    )
-  ).to.be.revertedWith("NOT_ENOUGH_ORGANIZATION_FUNDS");
+  // await BondlyContract.connect(alice).createProject(
+  //   PROJECT_ID_TEST,
+  //   ORGANIZATION_ID_TEST
+  // );
 
-  expect(await OrganizationVaultContract.getOrganizationBalance(ORGANIZATION_ID_TEST)).to.equal(0);
-  await USDTokenContract.connect(owner).approve(OrganizationVaultContract.address, ORGANIZATION_INITIAL_BALANCE);
-  await OrganizationVaultContract.connect(owner).fundOrganization(ORGANIZATION_ID_TEST, ORGANIZATION_INITIAL_BALANCE);
+  // await expect(
+  //   BondlyContract.connect(bob).createMovement(
+  //     MOVEMENT_ID_TEST,
+  //     PROJECT_ID_TEST,
+  //     ORGANIZATION_ID_TEST,
+  //     PIZZA_PRICE,
+  //     pizzaShop.address
+  //   )
+  // ).to.be.revertedWith("NOT_ENOUGH_ORGANIZATION_FUNDS");
+
+  // expect(await BondlyContract.getOrganizationBalance(ORGANIZATION_ID_TEST)).to.equal(0);
+  // await USDTokenContract.connect(owner).approve(BondlyContract.address, ORGANIZATION_INITIAL_BALANCE);
+  // await BondlyContract.connect(owner).fundOrganization(ORGANIZATION_ID_TEST, ORGANIZATION_INITIAL_BALANCE);
 
   return {
     USDTokenContract,
-    OrganizationVaultContract,
+    BondlyContract,
     owner,
     alice,
     bob,
@@ -108,12 +129,14 @@ async function basicVaultSetupFixture() {
 }
 
 module.exports = {
-  deployVaultFixture,
-  basicVaultSetupFixture,
+  deployBondlyFixture,
+  basicBondlySetupFixture,
   DECIMALS,
-  ORGANIZATION_ID_TEST,
-  PROJECT_ID_TEST,
-  MOVEMENT_ID_TEST,
+  PROJECT_SLUG_TEST,
+  MOVEMENT_SLUG_TEST,
   PIZZA_PRICE,
-  ORGANIZATION_INITIAL_BALANCE
+  PROJECT_INITIAL_BALANCE_AVAX,
+  PROJECT_INITIAL_BALANCE_STABLE,
+  PROJECT_CREATION_FEE,
+  MOVEMENT_CREATION_FEE,
 };

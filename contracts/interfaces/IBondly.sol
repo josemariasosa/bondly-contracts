@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-interface IBondlyContract {
+interface IBondly {
     error InvalidZeroAddress();
     error AlreadyAllowed(address _currency);
     error InvalidSizeLimit();

@@ -5,14 +5,14 @@ async function main() {
   const [owner] = await ethers.getSigners();
 
   console.log("Step 1. Deploying OrganizationVault contract...")
-  const OrganizationVaultContract = await OrganizationVault.connect(owner).deploy(
+  const BondlyContract = await OrganizationVault.connect(owner).deploy(
     GOERLI_USDT_TOKEN
   );
 
-  await OrganizationVaultContract.deployed();
+  await BondlyContract.deployed();
 
   console.log("Addresses of the deployed contracts:")
-  console.log(" - OrganizationVault:  %s", OrganizationVaultContract.address);
+  console.log(" - OrganizationVault:  %s", BondlyContract.address);
   console.log(" - Goerli USDT Token:  %s", GOERLI_USDT_TOKEN);
 }
 
