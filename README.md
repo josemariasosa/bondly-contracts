@@ -1,4 +1,4 @@
-# Bondly (Smart Contract for King of Devs Hackathon)
+# Bondly Contract
 
 Buenos Aires - Argentina
 

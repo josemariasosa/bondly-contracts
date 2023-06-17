@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
+import "./interfaces/IBondlyContract.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 // import "hardhat/console.sol";
 
-contract BondlyContract {
+contract BondlyContract is IBondlyContract {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
@@ -23,6 +24,7 @@ contract BondlyContract {
 
     /// @notice Payed in AVAX - base asset.
     uint256 immutable public projectCreationFee;
+    uint256 immutable public movementCreationFee;
     uint256 public collectedFees;
 
     struct Project {
@@ -33,13 +35,14 @@ contract BondlyContract {
 
         uint256 balanceAvax;
         uint256 balanceStable;
-        address stableAddress;
+        IERC20 stableAddress;
     }
 
     struct Movement {
         bytes32 id;
         bytes32 projectId;
-        uint256 amount;
+        uint256 amountAvax;
+        uint256 amountStable;
         address payTo;
         address proposedBy;
         address[] approvedBy;
@@ -48,28 +51,19 @@ contract BondlyContract {
         bool rejected;
     }
 
-    error InvalidZeroAddress();
-    error AlreadyAllowed(address _currency);
-    error InvalidSizeLimit();
-    error InvalidBalanceAmount();
-    error UnavailableCurrency(address _currency);
-    error ProjectNotFound(bytes32 memory _hash_id);
-
     /// @notice Not for `v0.2.0`.
     // mapping(bytes32 => Organization) public organizations;
     // EnumerableSet.Bytes32Set private organizationHashIds;
 
+    mapping(address => bytes32[]) public projectOwners;
     mapping(bytes32 => Project) public projects;
     EnumerableSet.Bytes32Set private projectHashIds;
 
+    mapping(address => bytes32[]) public movementCreator;
     mapping(bytes32 => Movement) public movements;
     EnumerableSet.Bytes32Set private movementHashIds;
 
-    address public immutable baseToken;
-
     IERC20[] public allowedCurrency;
-
-    mapping(bytes32 => mapping(address => uint256)) public projectBalances;
 
     /// @notice Not for `v0.2.0`.
     // modifier onlyOrganizationOwner(string memory _organizationId) {
@@ -90,28 +84,25 @@ contract BondlyContract {
         _;
     }
 
-    function isAllowed(address _currency) public view returns (bool) {
-        IERC20[] memory _currencies = allowedCurrency;
-        return _accountInArray(_currency, _currencies);
-    }
-
     constructor(
         IERC20[] memory _allowedCurrency,
         uint256 _projectCreationFee,
+        uint256 _movementCreationFee
     ) {
         if (_allowedCurrency.length > MAX_CURRENCIES) { revert InvalidSizeLimit(); }
-        for (int i = 0; i <= _allowedCurrency.length; ++i) {
+        for (uint i = 0; i < _allowedCurrency.length; ++i) {
             address _currency = address(_allowedCurrency[i]);
-            if _currency == address(0) { revert InvalidZeroAddress(); }
+            if (_currency == address(0)) { revert InvalidZeroAddress(); }
 
-            if isAllowed(_currency) {
+            if (isAllowed(_currency)) {
                 revert AlreadyAllowed(_currency);
             } else {
-                allowedCurrency.push(IERC20(_currency))
+                allowedCurrency.push(IERC20(_currency));
             }
         }
 
         projectCreationFee = _projectCreationFee;
+        movementCreationFee = _movementCreationFee;
     }
 
     /// @notice Not for `v0.2.0`.
@@ -138,36 +129,20 @@ contract BondlyContract {
     //     organizationHashIds.add(hash_id);
     // }
 
-    function _assertAllowedCurrency(address _currency) internal {
-        if (!isAllowed(_currency)) { revert UnavailableCurrency(_currency); }
-    }
-
-    function _chargeCreateProjectFee() private {
-        uint256 _fee = projectCreationFee;
-        require(msg.value >= projectCreationFee, "Not enough AVAX sent.");
-
-        collectedFees += projectCreationFee;
-        uint256 amountToReturn = msg.value - _fee;
-        if (amountToReturn > 0) {
-            msg.sender.transfer(amountToReturn);
-        }
-    }
-
     /// @notice The project slug MUST be unique.
     /// @param _projectSlug a URL-friendly version of a string, example "hello-world".
-    /// @param _useAvax if false, then the project will use the erc20 address.
+    /// @param _owners do not forget to add the caller in the owners list.
+    /// @param _approvalThreshold MultiSig M-N, the threshold is N.
     /// @param _currency if `_useAvax` is true, then this should be address(0).
     function createProject(
-        // @notice Not for `v0.2.0`.
-        // string memory _organizationId,
         string memory _projectSlug,
         address[] memory _owners,
         uint32 _approvalThreshold,
-        address _currency,
+        address _currency
     ) public payable {
-        if (_currency != address(0)) { _assertAllowedCurrency(_currency); }
+        _chargeFee(projectCreationFee);
 
-        _chargeCreateProjectFee();
+        if (_currency != address(0)) { _assertAllowedCurrency(_currency); }
 
         bytes32 hash_id = keccak256(abi.encodePacked(_projectSlug));
         require(!projectHashIds.contains(hash_id), "PROJECT_ID_ALREADY_EXISTS");
@@ -177,56 +152,78 @@ contract BondlyContract {
         new_project.approvalThreshold = _approvalThreshold;
         new_project.balanceAvax = 0;
         new_project.balanceStable = 0;
-        new_project.stableAddress = _currency;
-
-        for (uint i = 0; i < _owners.length; ++i) {
-            new_project.owners.push(_owners[i])
-        } 
+        new_project.stableAddress = IERC20(_currency);
+        
+        // 👀 CAUTION: The logic is to insert all the owners into the new project.
+        new_project.owners = _owners;
 
         projects[hash_id] = new_project;
+        // for (uint i = 0; i < _owners.length; ++i) {
+        //     projects[hash_id].owners.push(_owners[i]);
+        // } 
+
         projectHashIds.add(hash_id);
+
+        for (uint i = 0; i < _owners.length; ++i) {
+            bytes32[] storage _projects = projectOwners[_owners[i]];
+            _projects.push(hash_id);
+        }
     }
 
     function updateProjectStableAddress(
         string memory _projectSlug,
-        address _newCurrency,
+        address _newCurrency
     ) public onlyProjectOwner(_projectSlug) {
-        if (balanceStable > 0) { revert InvalidBalanceAmount(); }
         bytes32 hash_id = keccak256(abi.encodePacked(_projectSlug));
         Project storage project = projects[hash_id];
-        project.stableAddress = _newCurrency;
+        if (project.balanceStable > 0) { revert InvalidBalanceAmount(); }
+        project.stableAddress = IERC20(_newCurrency);
     }
 
     function createMovement(
         string memory _movementSlug,
         string memory _projectSlug,
-        uint256 _amount,
+        uint256 _amountStable,
+        uint256 _amountAvax,
         address _payTo
-    ) external onlyProjectOwner(_projectSlug) {
-        bytes32 hash_id = keccak256(abi.encodePacked(_movementId));
+    ) external payable onlyProjectOwner(_projectSlug) {
+        _chargeFee(movementCreationFee);
+
+        bytes32 hash_id = keccak256(abi.encodePacked(_movementSlug));
         require(!movementHashIds.contains(hash_id), "MOVEMENT_ID_ALREADY_EXISTS");
 
-        bytes32 organization_hash_id = keccak256(abi.encodePacked(_organizationId));
-        Organization storage organization = organizations[organization_hash_id];
-        require(organization.balance >= _amount, "NOT_ENOUGH_ORGANIZATION_FUNDS");
-        organization.balance -= _amount;
+        bytes32 project_hash_id = keccak256(abi.encodePacked(_projectSlug));
+        Project storage project = projects[project_hash_id];
+
+        require(project.balanceStable >= _amountStable, "NOT_ENOUGH_PROJECT_FUNDS");
+        require(project.balanceAvax >= _amountAvax, "NOT_ENOUGH_PROJECT_FUNDS");
+
+        project.balanceStable -= _amountStable;
+        project.balanceAvax -= _amountAvax;
 
         Movement memory new_movement;
-        new_movement.id = _movementId;
-        new_movement.projectId = _projectId;
-        new_movement.amount = _amount;
+        new_movement.id = hash_id;
+        new_movement.projectId = project_hash_id;
+        new_movement.amountStable = _amountStable;
+        new_movement.amountAvax = _amountAvax;
         new_movement.payTo = _payTo;
         new_movement.proposedBy = msg.sender;
 
         movements[hash_id] = new_movement;
         movementHashIds.add(hash_id);
+
+        address[] memory _owners = project.owners;
+        for (uint i = 0; i < _owners.length; ++i) {
+            bytes32[] storage _projects = movementCreator[_owners[i]];
+            _projects.push(hash_id);
+        }
     }
 
     function approveMovement(
-        string memory _movementId,
-        string memory _organizationId
-    ) external onlyOrganizationOwner(_organizationId) {
-        bytes32 hash_id = keccak256(abi.encodePacked(_movementId));
+        string memory _movementSlug,
+        string memory _projectSlug
+    ) external onlyProjectOwner(_projectSlug) {
+        bytes32 hash_id = keccak256(abi.encodePacked(_movementSlug));
         require(movementHashIds.contains(hash_id), "MOVEMENT_ID_DOES_NOT_EXIST");
         Movement storage movement = movements[hash_id];
 
@@ -235,14 +232,14 @@ contract BondlyContract {
         require(!_accountInArray(msg.sender, movement.rejectedBy), "USER_ALREADY_REJECTED_MOVEMENT");
 
         movement.approvedBy.push(msg.sender);
-        _evaluateMovement(hash_id, _organizationId);
+        _evaluateMovement(hash_id, _projectSlug);
     }
 
     function rejectMovement(
-        string memory _movementId,
-        string memory _organizationId
-    ) external onlyOrganizationOwner(_organizationId) {
-        bytes32 hash_id = keccak256(abi.encodePacked(_movementId));
+        string memory _movementSlug,
+        string memory _projectSlug
+    ) external onlyProjectOwner(_projectSlug) {
+        bytes32 hash_id = keccak256(abi.encodePacked(_movementSlug));
         require(movementHashIds.contains(hash_id), "MOVEMENT_ID_DOES_NOT_EXIST");
         Movement storage movement = movements[hash_id];
 
@@ -251,26 +248,21 @@ contract BondlyContract {
         require(!_accountInArray(msg.sender, movement.rejectedBy), "USER_ALREADY_REJECTED_MOVEMENT");
 
         movement.rejectedBy.push(msg.sender);
-        _evaluateMovement(hash_id, _organizationId);
+        _evaluateMovement(hash_id, _projectSlug);
     }
 
     /// @param _hash_id must be from an existing project.
-    /// @param _stableAddress if address(0), then the funding is in AVAX.
     function fundProjectHash(
-        bytes32 memory _hash_id,
-        uint256 _amountStable,
-        IERC20 _stableAddress,
+        bytes32 _hash_id,
+        uint256 _amountStable
     ) public payable {
-
-        require(projectHashIds.contains(hash_id));
+        require(projectHashIds.contains(_hash_id));
         uint256 _amountAvax = msg.value;
-
-        Organization storage project = projects[hash_id];
+        Project storage project = projects[_hash_id];
 
         bool _amountUpdated;
         if (_amountStable > 0) {
-            require(_stableAddress == project.stableAddress);
-            _stableAddress.safeTransferFrom(msg.sender, address(this), _amountStable);
+            project.stableAddress.safeTransferFrom(msg.sender, address(this), _amountStable);
             project.balanceStable += _amountStable;
             _amountUpdated = true;
         }
@@ -280,12 +272,13 @@ contract BondlyContract {
             _amountUpdated = true;
         }
 
+        // Only work if some amount was updated.
+        require(_amountUpdated);
     }
 
-    function fundProject(string memory _projectSlug, uint256 _amount) public payable {
+    function fundProject(string memory _projectSlug, uint256 _amountStable) public payable {
         bytes32 hash_id = keccak256(abi.encodePacked(_projectSlug));
-        return fundProjectHash(hash_id);
-
+        fundProjectHash(hash_id, _amountStable);
     }
 
     /// @notice Not for `v0.2.0`.
@@ -299,7 +292,7 @@ contract BondlyContract {
     //     }
     // }
 
-    function getProjectHash(bytes32 memory hash_id) public view returns(Project memory) {
+    function getProjectHash(bytes32 hash_id) public view returns(Project memory) {
         if (projectHashIds.contains(hash_id)) {
             Project memory project = projects[hash_id];
             return project;
@@ -310,30 +303,25 @@ contract BondlyContract {
 
     function getProject(string memory _slug) public view returns (Project memory) {
         bytes32 hash_id = keccak256(abi.encodePacked(_slug));
-        return getProjectHash(hash_id)
-        
+        return getProjectHash(hash_id);
     }
 
-    function getOrganizationBalance(string memory _id) public view returns (uint256) {
-        return getOrganization(_id).balance;
+    function getProjectBalanceStable(string memory _slug) public view returns (uint256) {
+        return getProject(_slug).balanceStable;
     }
 
-    function getOrganizationThreshold(
-        string memory _id
-    ) public view returns (uint256 _totalOwners, uint256 _threshold) {
-        Organization memory organization = getOrganization(_id);
-        return (organization.owners.length, organization.approvalThreshold);
+    function getProjectThreshold(
+        string memory _slug
+    ) public view returns (uint256 _totalOwners, uint256 _threshold, IERC20 _stableAddress) {
+        Project memory project = getProject(_slug);
+        return (project.owners.length, project.approvalThreshold, project.stableAddress);
     }
 
-    function totalOrganizations() external view returns (uint256) {
-        return organizationHashIds.length();
-    }
-
-    function totalProjects() external view returns (uint256) {
+    function getTotalProjects() external view returns (uint256) {
         return projectHashIds.length();
     }
 
-    function totalMovements() external view returns (uint256) {
+    function getTotalMovements() external view returns (uint256) {
         return movementHashIds.length();
     }
 
@@ -351,20 +339,56 @@ contract BondlyContract {
         return doesListContainElement;
     }
 
-    function _evaluateMovement(bytes32 _movementHashId, string memory _organizationId) private {
+    function _evaluateMovement(bytes32 _movementHashId, string memory _projectSlug) private {
         Movement storage movement = movements[_movementHashId];
-        (uint256 totalOwners, uint256 threshold) = getOrganizationThreshold(_organizationId);
+        (uint256 totalOwners, uint256 threshold, IERC20 stableAddress) = getProjectThreshold(_projectSlug);
         // If the movement was already payed or rejected, then there is nothing to evaluate.
         if (!movement.payed && !movement.rejected) {
             if (movement.approvedBy.length >= (threshold - 1)) {
                 movement.payed = true;
-                IERC20(baseToken).safeTransfer(movement.payTo, movement.amount);
+
+                // Stable coin: USD, MXN, ARG.
+                uint256 _amountStable = movement.amountStable;
+                if (_amountStable > 0) {
+                    stableAddress.safeTransfer(movement.payTo, _amountStable);
+                }
+
+                uint256 _amountAvax = movement.amountAvax;
+                if (_amountAvax > 0) {
+                    payable(movement.payTo).transfer(_amountAvax);
+                }
             } else if (movement.rejectedBy.length > (totalOwners - threshold)) {
                 movement.rejected = true;
-                bytes32 hash_id = keccak256(abi.encodePacked(_organizationId));
-                Organization storage organization = organizations[hash_id];
-                organization.balance += movement.amount;
+                bytes32 hash_id = keccak256(abi.encodePacked(_projectSlug));
+                Project storage project = projects[hash_id];
+                project.balanceStable += movement.amountStable;
+                project.balanceAvax += movement.amountAvax;
             }
+        }
+    }
+
+    function isAllowed(address _currency) public view returns (bool) {
+        IERC20[] memory _allowedCurrency = allowedCurrency;
+        address[] memory _currencies = new address[](_allowedCurrency.length);
+
+        for (uint i = 0; i < _allowedCurrency.length; i++) {
+            _currencies[i] = address(_allowedCurrency[i]);
+        }
+
+        return _accountInArray(_currency, _currencies);
+    }
+
+    function _assertAllowedCurrency(address _currency) internal view {
+        if (!isAllowed(_currency)) { revert UnavailableCurrency(_currency); }
+    }
+
+    function _chargeFee(uint256 _fee) private {
+        require(msg.value >= _fee, "Not enough AVAX sent.");
+
+        collectedFees += _fee;
+        uint256 amountToReturn = msg.value - _fee;
+        if (amountToReturn > 0) {
+            payable(msg.sender).transfer(amountToReturn);
         }
     }
 }
