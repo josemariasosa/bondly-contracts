@@ -78,7 +78,7 @@ async function basicBondlySetupFixture() {
       USDTokenContract.address,
       { value: 0 }
     )
-  ).to.be.revertedWith("Not enough AVAX sent.");
+  ).to.be.revertedWithCustomError(BondlyContract, "NotEnoughToPayFee");
 
   await expect(
     BondlyContract.connect(owner).createProject(

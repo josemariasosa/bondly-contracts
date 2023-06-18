@@ -2,10 +2,12 @@
 pragma solidity 0.8.18;
 
 interface IBondly {
-    error InvalidZeroAddress();
     error AlreadyAllowed(address _currency);
-    error InvalidSizeLimit();
     error InvalidBalanceAmount();
-    error UnavailableCurrency(address _currency);
+    error InvalidSizeLimit();
+    error InvalidZeroAddress();
+    error NotEnoughToPayFee(uint256 _fee);
     error ProjectNotFound(bytes32 _hash_id);
+    error Unauthorized();
+    error UnavailableCurrency(address _currency);
 }
