@@ -2,6 +2,8 @@
 
 Buenos Aires - Guadalajara
 
+<img src="media/logo.jpg" width="250">
+
 ## Modular Hackathon
 
 Bondly was deployed on `Avalanche` 🔺🔻🔺 Fuji testnet:
