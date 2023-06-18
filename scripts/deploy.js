@@ -5,6 +5,7 @@ async function main() {
   const PROJECT_CREATION_FEE = ethers.utils.parseEther('0.01');
   const MOVEMENT_CREATION_FEE = ethers.BigNumber.from(0.00).mul(DECIMALS);
   const CONRADO_ADDRESS = "0x942AeF058cb15C9b8b89B57B4E607d464ed8Cd33";
+  const AVAX_TESTNET_USDT_DUMMY = "0x9fea0ED05e44A6b759fa1f9C5228b464Bf31C1cB";
 
   const PROJECT_SLUG_TEST = "bondly-irl-meeting";
   const MOVEMENT_SLUG_TEST = "dinner-pizza";
@@ -21,23 +22,23 @@ async function main() {
     pizzaShop
   ] = await ethers.getSigners();
 
-  const USDToken = await ethers.getContractFactory("Token");
+  // const USDToken = await ethers.getContractFactory("Token");
   const Bondly = await ethers.getContractFactory("Bondly");
 
-  console.log("Deploying USDT...");
-  const initialSupply = ethers.BigNumber.from(20_000_000).mul(DECIMALS);
-  const USDTokenContract = await USDToken.connect(alice).deploy(
-    initialSupply,
-    "USD Dummy Token",
-    "USDT",
-    alice.address
-  );
-  await USDTokenContract.deployed();
-  console.log("Done in %s.", USDTokenContract.address);
+  // console.log("Deploying USDT...");
+  // const initialSupply = ethers.BigNumber.from(20_000_000).mul(DECIMALS);
+  // const USDTokenContract = await USDToken.connect(alice).deploy(
+  //   initialSupply,
+  //   "USD Dummy Token",
+  //   "USDT",
+  //   alice.address
+  // );
+  // await USDTokenContract.deployed();
+  // console.log("Done in %s.", USDTokenContract.address);
 
   console.log("Deploying Bondly...");
   const BondlyContract = await Bondly.connect(alice).deploy(
-    [USDTokenContract.address],
+    [AVAX_TESTNET_USDT_DUMMY],
     PROJECT_CREATION_FEE,
     MOVEMENT_CREATION_FEE
   );
@@ -46,10 +47,13 @@ async function main() {
 
   console.log("Creating Project");
   const request = await BondlyContract.connect(alice).createProject(
+    "W3Talk Podcast",
+    "Bitcoin, Ethereum, Avalanche and all-crypto podcast and meetups.",
+    "Bondly Team (with love)",
     PROJECT_SLUG_TEST,
     [alice.address, bob.address, CONRADO_ADDRESS],
     2,
-    USDTokenContract.address,
+    AVAX_TESTNET_USDT_DUMMY,
     { value: PROJECT_CREATION_FEE }
   );
   console.log(request);
@@ -73,6 +77,8 @@ async function main() {
 
   console.log("Creating Movement");
   const request3 = await BondlyContract.connect(bob).createMovement(
+    "Pay for the pizza in the event.",
+    "Invoice number: WAP-123423432\nWe love pizza",
     MOVEMENT_SLUG_TEST,
     PROJECT_SLUG_TEST,
     PIZZA_PRICE,
@@ -86,7 +92,7 @@ async function main() {
 
   console.log("Addresses of the deployed contracts:")
   console.log(" - Bondly Address:  %s", BondlyContract.address);
-  console.log(" - USDT dummy:  %s", USDTokenContract.address);
+  console.log(" - USDT dummy:  %s", AVAX_TESTNET_USDT_DUMMY);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

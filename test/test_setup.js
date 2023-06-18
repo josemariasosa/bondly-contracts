@@ -72,6 +72,9 @@ async function basicBondlySetupFixture() {
 
   await expect(
     BondlyContract.connect(owner).createProject(
+      "W3Talk Podcast",
+      "Crypto meetup",
+      "Bondly Team (with love)",
       PROJECT_SLUG_TEST,
       [alice.address],
       2,
@@ -82,6 +85,9 @@ async function basicBondlySetupFixture() {
 
   await expect(
     BondlyContract.connect(owner).createProject(
+      "W3Talk Podcast",
+      "Crypto meetup",
+      "Bondly Team (with love)",
       PROJECT_SLUG_TEST,
       [alice.address],
       2,
@@ -94,6 +100,9 @@ async function basicBondlySetupFixture() {
   // await createOrg.wait(1);
 
   await BondlyContract.connect(alice).createProject(
+    "W3Talk Podcast",
+    "Bitcoin, Ethereum, Avalanche and all-crypto podcast and meetups.",
+    "Bondly Team (with love)",
     PROJECT_SLUG_TEST,
     [alice.address, bob.address, carl.address],
     2,
@@ -103,6 +112,8 @@ async function basicBondlySetupFixture() {
 
   await expect(
     BondlyContract.connect(bob).createMovement(
+      "Pay for the pizza in the event.",
+      "Invoice number: WAP-123423432\nWe love pizza",
       MOVEMENT_SLUG_TEST,
       PROJECT_SLUG_TEST,
       PIZZA_PRICE,

@@ -56,6 +56,8 @@ describe("Bondly App - Test Suite for Modular Hackathon 🐷", function () {
       } = await loadFixture(basicBondlySetupFixture);
 
       await BondlyContract.connect(bob).createMovement(
+        "Pay for the pizza in the event.",
+        "Invoice number: WAP-123423432\nWe love pizza",
         MOVEMENT_SLUG_TEST,
         PROJECT_SLUG_TEST,
         PIZZA_PRICE,    // Amount in STABLE
@@ -83,6 +85,8 @@ describe("Bondly App - Test Suite for Modular Hackathon 🐷", function () {
       } = await loadFixture(basicBondlySetupFixture);
 
       await BondlyContract.connect(bob).createMovement(
+        "Pay for the pizza in the event.",
+        "Invoice number: WAP-123423432\nWe love pizza",
         MOVEMENT_SLUG_TEST,
         PROJECT_SLUG_TEST,
         PIZZA_PRICE,
@@ -116,6 +120,8 @@ describe("Bondly App - Test Suite for Modular Hackathon 🐷", function () {
       } = await loadFixture(basicBondlySetupFixture);
 
       await BondlyContract.connect(bob).createMovement(
+        "Pay for the pizza in the event.",
+        "Invoice number: WAP-123423432\nWe love pizza",
         MOVEMENT_SLUG_TEST,
         PROJECT_SLUG_TEST,
         PIZZA_PRICE,
@@ -154,6 +160,8 @@ describe("Bondly App - Test Suite for Modular Hackathon 🐷", function () {
       } = await loadFixture(basicBondlySetupFixture);
 
       await BondlyContract.connect(bob).createMovement(
+        "Pay for the pizza in the event.",
+        "Invoice number: WAP-123423432\nWe love pizza",
         MOVEMENT_SLUG_TEST,
         PROJECT_SLUG_TEST,
         PIZZA_PRICE,
@@ -198,6 +206,10 @@ describe("Bondly App - Test Suite for Modular Hackathon 🐷", function () {
         bob,
       } = await loadFixture(basicBondlySetupFixture);
 
+      // console.log("NACIONES UNIDAS");
+      // // const result = await BondlyContract.getOwnerProjects(alice.address, 5);
+      // const result = await BondlyContract.projectOwners(alice.address, 0);
+      // console.log(result);
 
     });
   });

@@ -28,7 +28,11 @@ contract Bondly is IBondly, Ownable {
 
     struct Project {
         bytes32 id;
-        // bytes32 organizationId;
+
+        string name;
+        string description;
+        string organization;
+
         address[] owners;
         uint32 approvalThreshold;
 
@@ -39,6 +43,10 @@ contract Bondly is IBondly, Ownable {
 
     struct Movement {
         bytes32 id;
+
+        string name;
+        string description;
+
         bytes32 projectId;
         uint256 amountAvax;
         uint256 amountStable;
@@ -130,12 +138,15 @@ contract Bondly is IBondly, Ownable {
     // }
 
     /// @notice The project slug MUST be unique.
-    /// @param _projectSlug a URL-friendly version of a string, example "hello-world".
+    /// @param _slug a URL-friendly version of a string, example "hello-world".
     /// @param _owners do not forget to add the caller in the owners list.
     /// @param _approvalThreshold MultiSig M-N, the threshold is N.
     /// @param _currency if `_useAvax` is true, then this should be address(0).
     function createProject(
-        string memory _projectSlug,
+        string memory _name,
+        string memory _description,
+        string memory _organization,
+        string memory _slug,
         address[] memory _owners,
         uint32 _approvalThreshold,
         address _currency
@@ -146,7 +157,7 @@ contract Bondly is IBondly, Ownable {
         require(_approvalThreshold <= _owners.length, "INCORRECT_APPROVAL_THRESHOLD");
         require(_approvalThreshold > 0, "approvalThreshold_CANNOT_BE_ZERO");
 
-        bytes32 hash_id = keccak256(abi.encodePacked(_projectSlug));
+        bytes32 hash_id = keccak256(abi.encodePacked(_slug));
         require(!projectHashIds.contains(hash_id), "PROJECT_ID_ALREADY_EXISTS");
 
         Project memory new_project;
@@ -156,6 +167,11 @@ contract Bondly is IBondly, Ownable {
         new_project.balanceStable = 0;
         new_project.stableAddress = IERC20(_currency);
         new_project.owners = _owners;
+
+        /// WARNING: expensive on-chain storage.
+        new_project.name = _name;
+        new_project.description = _description;
+        new_project.organization = _organization;
 
         projects[hash_id] = new_project;
         projectHashIds.add(hash_id);
@@ -177,6 +193,8 @@ contract Bondly is IBondly, Ownable {
     }
 
     function createMovement(
+        string memory _name,
+        string memory _description,
         string memory _movementSlug,
         string memory _projectSlug,
         uint256 _amountStable,
@@ -204,6 +222,10 @@ contract Bondly is IBondly, Ownable {
         new_movement.amountAvax = _amountAvax;
         new_movement.payTo = _payTo;
         new_movement.proposedBy = msg.sender;
+
+        /// WARNING: expensive on-chain storage.
+        new_movement.name = _name;
+        new_movement.description = _description;
 
         movements[hash_id] = new_movement;
         movementHashIds.add(hash_id);
