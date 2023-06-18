@@ -324,7 +324,6 @@ contract Bondly is IBondly, Ownable {
         _avax = getProjectBalanceAvax(_slug);
     }
 
-
     function getProjectThreshold(
         string memory _slug
     ) public view returns (uint256 _totalOwners, uint256 _threshold, IERC20 _stableAddress) {

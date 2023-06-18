@@ -188,4 +188,17 @@ describe("Bondly App - Test Suite for Modular Hackathon 🐷", function () {
       );
     });
   });
+
+  describe("Funding project", function () {
+    it("Should allow funding a project.", async function () {
+      const {
+        USDTokenContract,
+        BondlyContract,
+        alice,
+        bob,
+      } = await loadFixture(basicBondlySetupFixture);
+
+
+    });
+  });
 });

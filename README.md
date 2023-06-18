@@ -2,6 +2,16 @@
 
 Buenos Aires - Guadalajara
 
+## Modular Hackathon
+
+Bondly was deployed on `Avalanche` 🔺🔻🔺 Fuji testnet:
+
+```sh
+Addresses of the deployed contracts:
+ - Bondly Address:  0xAEb674aa3b8758aEdb22477F3176365CEBE8942E
+ - USDT dummy:      0x9fea0ED05e44A6b759fa1f9C5228b464Bf31C1cB
+```
+
 ## Introduction
 
 The backend for the Bondly app is composed by two blocks:

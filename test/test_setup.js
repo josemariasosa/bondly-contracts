@@ -123,6 +123,8 @@ async function basicBondlySetupFixture() {
     PROJECT_INITIAL_BALANCE_STABLE,
     { value: PROJECT_INITIAL_BALANCE_AVAX }
   );
+  expect(await BondlyContract.getProjectBalanceStable(PROJECT_SLUG_TEST)).to.equal(PROJECT_INITIAL_BALANCE_STABLE);
+  expect(await BondlyContract.getProjectBalanceAvax(PROJECT_SLUG_TEST)).to.equal(PROJECT_INITIAL_BALANCE_AVAX);
 
   return {
     USDTokenContract,
