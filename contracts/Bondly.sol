@@ -314,6 +314,13 @@ contract Bondly is IBondly, Ownable {
     //     }
     // }
 
+    function getProjectDetailsHash(
+        bytes32 _hash_id
+    ) public view returns (string memory, string memory, string memory) {
+        Project memory project = _getProjectHash(_hash_id);
+        return (project.name, project.description, project.organization);
+    }
+
     function getProjectDetails(
         string memory _slug
     ) public view returns (string memory, string memory, string memory) {

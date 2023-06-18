@@ -8,7 +8,7 @@ async function main() {
 
   // Deployed in AVAX testnet contracts.
   const AVAX_TESTNET_USDT_DUMMY = "0x9fea0ED05e44A6b759fa1f9C5228b464Bf31C1cB";
-  const AVAX_TESTNET_BONDLY = "0xf9d515097D0220f78dA64be92EEC3DDF3e3b1F55";
+  const AVAX_TESTNET_BONDLY = "0xb734eb2e370735d2e27e4E133534B6b848e7fBa1";
 
   const PROJECT_SLUG_TEST = "bondly-irl-meeting";
   const MOVEMENT_SLUG_TEST = "dinner-pizza";
