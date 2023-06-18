@@ -10,7 +10,7 @@ const MOVEMENT_SLUG_TEST = "dinner-pizza";
 const PIZZA_PRICE = ethers.BigNumber.from(199).mul(DECIMALS);
 
 const PROJECT_INITIAL_BALANCE_AVAX = ethers.utils.parseEther('10.0');
-const PROJECT_INITIAL_BALANCE_STABLE = ethers.utils.parseEther('0.0');
+const PROJECT_INITIAL_BALANCE_STABLE = ethers.utils.parseEther('240.0');
 
 // Fee in AVAX.
 const PROJECT_CREATION_FEE = ethers.utils.parseEther('0.01');
@@ -86,7 +86,7 @@ async function basicBondlySetupFixture() {
       [alice.address],
       2,
       USDTokenContract.address,
-      { value: PROJECT_CREATION_FEE }
+      { value: PROJECT_CREATION_FEE } // Pay for the new project.
     )
   ).to.be.revertedWith("INCORRECT_APPROVAL_THRESHOLD");
 

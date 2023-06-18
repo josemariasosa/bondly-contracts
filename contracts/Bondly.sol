@@ -314,7 +314,7 @@ contract Bondly is IBondly, Ownable {
     }
 
     function getProjectBalanceAvax(string memory _slug) public view returns (uint256) {
-        return getProject(_slug).balanceStable;
+        return getProject(_slug).balanceAvax;
     }
 
     function getProjectBalance(

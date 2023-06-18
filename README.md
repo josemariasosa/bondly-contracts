@@ -1,12 +1,12 @@
 # Bondly Contract
 
-Buenos Aires - Argentina
+Buenos Aires - Guadalajara
 
 ## Introduction
 
 The backend for the Bondly app is composed by two blocks:
 
-1. The `OrganizationVault` smart contract.
+1. The `Bondly` smart contract.
 2. The **Cedalio** database.
 
 In order to relate the information between the two backends we are using the `id`s in UUID created by Cedalio. An example looks:
@@ -24,7 +24,7 @@ Run the contract tests.
 ```sh
 $ npx hardhat test
 
-  Organization Vault - King of Devs 🧠
+  Bondly App - Test Suite for Modular Hackathon 🐷
     Deployment
       ✔ Should be deployed with the correct params. (949ms)
       ✔ Should have a correct initial setup. (200ms)
