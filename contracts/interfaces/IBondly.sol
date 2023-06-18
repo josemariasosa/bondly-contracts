@@ -10,4 +10,15 @@ interface IBondly {
     error ProjectNotFound(bytes32 _hash_id);
     error Unauthorized();
     error UnavailableCurrency(address _currency);
+
+    struct ProjectJson {
+        bytes32 id;
+
+        address[] owners;
+        uint32 approvalThreshold;
+
+        uint256 balanceAvax;
+        uint256 balanceStable;
+        address stableAddress;
+    }
 }

@@ -5,7 +5,10 @@ async function main() {
   const PROJECT_CREATION_FEE = ethers.utils.parseEther('0.01');
   const MOVEMENT_CREATION_FEE = ethers.BigNumber.from(0.00).mul(DECIMALS);
   const CONRADO_ADDRESS = "0x942AeF058cb15C9b8b89B57B4E607d464ed8Cd33";
+
+  // Deployed in AVAX testnet contracts.
   const AVAX_TESTNET_USDT_DUMMY = "0x9fea0ED05e44A6b759fa1f9C5228b464Bf31C1cB";
+  const AVAX_TESTNET_BONDLY = "0xf9d515097D0220f78dA64be92EEC3DDF3e3b1F55";
 
   const PROJECT_SLUG_TEST = "bondly-irl-meeting";
   const MOVEMENT_SLUG_TEST = "dinner-pizza";
@@ -22,7 +25,7 @@ async function main() {
     pizzaShop
   ] = await ethers.getSigners();
 
-  // const USDToken = await ethers.getContractFactory("Token");
+  const USDToken = await ethers.getContractFactory("Token");
   const Bondly = await ethers.getContractFactory("Bondly");
 
   // console.log("Deploying USDT...");
@@ -36,29 +39,39 @@ async function main() {
   // await USDTokenContract.deployed();
   // console.log("Done in %s.", USDTokenContract.address);
 
-  console.log("Deploying Bondly...");
-  const BondlyContract = await Bondly.connect(alice).deploy(
-    [AVAX_TESTNET_USDT_DUMMY],
-    PROJECT_CREATION_FEE,
-    MOVEMENT_CREATION_FEE
-  );
-  await BondlyContract.deployed();
-  console.log("Done in %s.", BondlyContract.address);
+  const USDTokenContract = USDToken.attach(AVAX_TESTNET_USDT_DUMMY);
 
-  console.log("Creating Project");
-  const request = await BondlyContract.connect(alice).createProject(
-    "W3Talk Podcast",
-    "Bitcoin, Ethereum, Avalanche and all-crypto podcast and meetups.",
-    "Bondly Team (with love)",
-    PROJECT_SLUG_TEST,
-    [alice.address, bob.address, CONRADO_ADDRESS],
-    2,
-    AVAX_TESTNET_USDT_DUMMY,
-    { value: PROJECT_CREATION_FEE }
+  // console.log("Deploying Bondly...");
+  // const BondlyContract = await Bondly.connect(alice).deploy(
+  //   [AVAX_TESTNET_USDT_DUMMY],
+  //   PROJECT_CREATION_FEE,
+  //   MOVEMENT_CREATION_FEE
+  // );
+  // await BondlyContract.deployed();
+  // console.log("Done in %s.", BondlyContract.address);
+
+  const BondlyContract = Bondly.attach(AVAX_TESTNET_BONDLY);
+
+  // console.log("Creating Project");
+  // const request = await BondlyContract.connect(alice).createProject(
+  //   "W3Talk Podcast",
+  //   "Bitcoin, Ethereum, Avalanche and all-crypto podcast and meetups.",
+  //   "Bondly Team (with love)",
+  //   PROJECT_SLUG_TEST,
+  //   [alice.address, bob.address, CONRADO_ADDRESS],
+  //   2,
+  //   AVAX_TESTNET_USDT_DUMMY,
+  //   { value: PROJECT_CREATION_FEE }
+  // );
+  // console.log(request);
+  // request.wait();
+  // console.log("Done.");
+
+  // Print the project details in the console.
+  console.log(
+    "Print the Project: ",
+    await BondlyContract.getProject(PROJECT_SLUG_TEST)
   );
-  console.log(request);
-  request.wait();
-  console.log("Done.");
 
   console.log("Funding 🤑 Project");
   await USDTokenContract.connect(alice).approve(

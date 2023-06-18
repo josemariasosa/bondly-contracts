@@ -83,7 +83,7 @@ contract Bondly is IBondly, Ownable {
     // }
 
     modifier onlyProjectOwner(string memory _slug) {
-        Project memory project = getProject(_slug);
+        ProjectJson memory project = getProject(_slug);
         if (!_accountInArray(msg.sender, project.owners)) { revert Unauthorized(); }
         _;
     }
@@ -314,8 +314,17 @@ contract Bondly is IBondly, Ownable {
     //     }
     // }
 
-    function getProjectHash(bytes32 hash_id) public view returns(Project memory) {
-        if (projectHashIds.contains(hash_id)) {
+    function getProjectDetails(
+        string memory _slug
+    ) public view returns (string memory, string memory, string memory) {
+        bytes32 hash_id = keccak256(abi.encodePacked(_slug));
+        Project memory project = _getProjectHash(hash_id);
+        return (project.name, project.description, project.organization);
+    }
+
+    /// @notice getProjectHash (1 of 2)
+    function _getProjectHash(bytes32 hash_id) private view returns (Project memory) {
+         if (projectHashIds.contains(hash_id)) {
             Project memory project = projects[hash_id];
             return project;
         } else {
@@ -323,7 +332,24 @@ contract Bondly is IBondly, Ownable {
         }
     }
 
-    function getProject(string memory _slug) public view returns (Project memory) {
+    /// @notice getProjectHash (2 of 2)
+    function getProjectHash(bytes32 hash_id) public view returns(ProjectJson memory) {
+        if (projectHashIds.contains(hash_id)) {
+            Project memory project = projects[hash_id];
+            ProjectJson memory result;
+            result.id = project.id;
+            result.owners = project.owners;
+            result.approvalThreshold = project.approvalThreshold;
+            result.balanceAvax = project.balanceAvax;
+            result.balanceStable = project.balanceStable;
+            result.stableAddress = address(project.stableAddress);
+            return result;
+        } else {
+            revert ProjectNotFound(hash_id);
+        }
+    }
+
+    function getProject(string memory _slug) public view returns (ProjectJson memory) {
         bytes32 hash_id = keccak256(abi.encodePacked(_slug));
         return getProjectHash(hash_id);
     }
@@ -346,10 +372,14 @@ contract Bondly is IBondly, Ownable {
     function getProjectThreshold(string memory _slug) public view returns (
         uint256 _totalOwners,
         uint256 _threshold,
-        IERC20 _stableAddress
+        address _stableAddress
     ) {
-        Project memory project = getProject(_slug);
-        return (project.owners.length, project.approvalThreshold, project.stableAddress);
+        ProjectJson memory project = getProject(_slug);
+        return (
+            project.owners.length,
+            project.approvalThreshold,
+            project.stableAddress
+        );
     }
 
     function getTotalProjects() external view returns (uint256) {
@@ -396,7 +426,7 @@ contract Bondly is IBondly, Ownable {
         (
             uint256 totalOwners,
             uint256 threshold,
-            IERC20 stableAddress
+            address stableAddress
         ) = getProjectThreshold(_projectSlug);
         // If the movement was already payed or rejected, then there is nothing to evaluate.
         if (!movement.payed && !movement.rejected) {
@@ -406,7 +436,7 @@ contract Bondly is IBondly, Ownable {
                 // Stable coin: USD, MXN, ARG.
                 uint256 _amountStable = movement.amountStable;
                 if (_amountStable > 0) {
-                    stableAddress.safeTransfer(movement.payTo, _amountStable);
+                    IERC20(stableAddress).safeTransfer(movement.payTo, _amountStable);
                 }
 
                 uint256 _amountAvax = movement.amountAvax;
