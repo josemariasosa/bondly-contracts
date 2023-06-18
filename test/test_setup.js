@@ -13,7 +13,7 @@ const PROJECT_INITIAL_BALANCE_AVAX = ethers.utils.parseEther('10.0');
 const PROJECT_INITIAL_BALANCE_STABLE = ethers.utils.parseEther('0.0');
 
 // Fee in AVAX.
-const PROJECT_CREATION_FEE = ethers.utils.parseEther('0.01').mul(DECIMALS);
+const PROJECT_CREATION_FEE = ethers.utils.parseEther('0.01');
 const MOVEMENT_CREATION_FEE = ethers.BigNumber.from(0.00).mul(DECIMALS);
 
 async function deployBondlyFixture() {
@@ -70,12 +70,15 @@ async function basicBondlySetupFixture() {
     pizzaShop
   } = await loadFixture(deployBondlyFixture);
 
-//   function createProject(
-//     string memory _projectSlug,
-//     address[] memory _owners,
-//     uint32 _approvalThreshold,
-//     address _currency
-// )
+  await expect(
+    BondlyContract.connect(owner).createProject(
+      PROJECT_SLUG_TEST,
+      [alice.address],
+      2,
+      USDTokenContract.address,
+      { value: 0 }
+    )
+  ).to.be.revertedWith("Not enough AVAX sent.");
 
   await expect(
     BondlyContract.connect(owner).createProject(
@@ -83,39 +86,43 @@ async function basicBondlySetupFixture() {
       [alice.address],
       2,
       USDTokenContract.address,
-      // { value: PROJECT_CREATION_FEE.toString() }
+      { value: PROJECT_CREATION_FEE }
     )
   ).to.be.revertedWith("INCORRECT_APPROVAL_THRESHOLD");
 
-  console.log("Jose cute");
+  // IMPORTANT: This was used to fix the error with the block mining.
+  // await createOrg.wait(1);
 
-  // await BondlyContract.connect(owner).createOrganization(
-  //   ORGANIZATION_ID_TEST,
-  //   [alice.address, bob.address, carl.address],
-  //   2
-  // );
+  await BondlyContract.connect(alice).createProject(
+    PROJECT_SLUG_TEST,
+    [alice.address, bob.address, carl.address],
+    2,
+    USDTokenContract.address,
+    { value: PROJECT_CREATION_FEE }
+  );
 
-  // // IMPORTANT: This was used to fix the error with the block mining.
-  // // await createOrg.wait(1);
+  await expect(
+    BondlyContract.connect(bob).createMovement(
+      MOVEMENT_SLUG_TEST,
+      PROJECT_SLUG_TEST,
+      PIZZA_PRICE,
+      0,
+      pizzaShop.address,
+      { value: 0 }
+    )
+  ).to.be.revertedWith("NOT_ENOUGH_PROJECT_FUNDS");
 
-  // await BondlyContract.connect(alice).createProject(
-  //   PROJECT_ID_TEST,
-  //   ORGANIZATION_ID_TEST
-  // );
-
-  // await expect(
-  //   BondlyContract.connect(bob).createMovement(
-  //     MOVEMENT_ID_TEST,
-  //     PROJECT_ID_TEST,
-  //     ORGANIZATION_ID_TEST,
-  //     PIZZA_PRICE,
-  //     pizzaShop.address
-  //   )
-  // ).to.be.revertedWith("NOT_ENOUGH_ORGANIZATION_FUNDS");
-
-  // expect(await BondlyContract.getOrganizationBalance(ORGANIZATION_ID_TEST)).to.equal(0);
-  // await USDTokenContract.connect(owner).approve(BondlyContract.address, ORGANIZATION_INITIAL_BALANCE);
-  // await BondlyContract.connect(owner).fundOrganization(ORGANIZATION_ID_TEST, ORGANIZATION_INITIAL_BALANCE);
+  expect(await BondlyContract.getProjectBalanceStable(PROJECT_SLUG_TEST)).to.equal(0);
+  expect(await BondlyContract.getProjectBalanceAvax(PROJECT_SLUG_TEST)).to.equal(0);
+  await USDTokenContract.connect(owner).approve(
+    BondlyContract.address,
+    PROJECT_INITIAL_BALANCE_STABLE
+  );
+  await BondlyContract.connect(owner).fundProject(
+    PROJECT_SLUG_TEST,
+    PROJECT_INITIAL_BALANCE_STABLE,
+    { value: PROJECT_INITIAL_BALANCE_AVAX }
+  );
 
   return {
     USDTokenContract,

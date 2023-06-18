@@ -144,6 +144,8 @@ contract Bondly is IBondly, Ownable {
         _chargeFee(projectCreationFee);
 
         if (_currency != address(0)) { _assertAllowedCurrency(_currency); }
+        require(_approvalThreshold <= _owners.length, "INCORRECT_APPROVAL_THRESHOLD");
+        require(_approvalThreshold > 0, "approvalThreshold_CANNOT_BE_ZERO");
 
         bytes32 hash_id = keccak256(abi.encodePacked(_projectSlug));
         require(!projectHashIds.contains(hash_id), "PROJECT_ID_ALREADY_EXISTS");
@@ -310,6 +312,18 @@ contract Bondly is IBondly, Ownable {
     function getProjectBalanceStable(string memory _slug) public view returns (uint256) {
         return getProject(_slug).balanceStable;
     }
+
+    function getProjectBalanceAvax(string memory _slug) public view returns (uint256) {
+        return getProject(_slug).balanceStable;
+    }
+
+    function getProjectBalance(
+        string memory _slug
+    ) public view returns (uint256 _stable, uint256 _avax) {
+        _stable = getProjectBalanceStable(_slug);
+        _avax = getProjectBalanceAvax(_slug);
+    }
+
 
     function getProjectThreshold(
         string memory _slug

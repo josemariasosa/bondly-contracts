@@ -8,7 +8,7 @@ const {
   MOVEMENT_ID_TEST,
   PROJECT_ID_TEST,
   PIZZA_PRICE,
-  ORGANIZATION_ID_TEST,
+  PROJECT_SLUG_TEST,
   ORGANIZATION_INITIAL_BALANCE,
   MOVEMENT_CREATION_FEE,
   PROJECT_CREATION_FEE
@@ -36,7 +36,7 @@ describe("Bondly App - ", function () {
     //   expect(await BondlyContract.totalOrganizations()).to.equal(1);
     //   expect(await BondlyContract.totalProjects()).to.equal(1);
     //   expect(
-    //     await BondlyContract.getOrganizationBalance(ORGANIZATION_ID_TEST)
+    //     await BondlyContract.getOrganizationBalance(PROJECT_SLUG_TEST)
     //   ).to.equal(ORGANIZATION_INITIAL_BALANCE);
     });
   });
@@ -52,12 +52,12 @@ describe("Bondly App - ", function () {
 //       await BondlyContract.connect(bob).createMovement(
 //         MOVEMENT_ID_TEST,
 //         PROJECT_ID_TEST,
-//         ORGANIZATION_ID_TEST,
+//         PROJECT_SLUG_TEST,
 //         PIZZA_PRICE,
 //         pizzaShop.address
 //       );
 //       expect(
-//         await BondlyContract.getOrganizationBalance(ORGANIZATION_ID_TEST)
+//         await BondlyContract.getOrganizationBalance(PROJECT_SLUG_TEST)
 //       ).to.equal(ORGANIZATION_INITIAL_BALANCE.sub(PIZZA_PRICE));
 //       expect(await BondlyContract.totalMovements()).to.equal(1);
 //     });
@@ -74,7 +74,7 @@ describe("Bondly App - ", function () {
 //       await BondlyContract.connect(bob).createMovement(
 //         MOVEMENT_ID_TEST,
 //         PROJECT_ID_TEST,
-//         ORGANIZATION_ID_TEST,
+//         PROJECT_SLUG_TEST,
 //         PIZZA_PRICE,
 //         pizzaShop.address
 //       );
@@ -82,14 +82,14 @@ describe("Bondly App - ", function () {
 //       await expect(
 //         BondlyContract.connect(bob).approveMovement(
 //           MOVEMENT_ID_TEST,
-//           ORGANIZATION_ID_TEST
+//           PROJECT_SLUG_TEST
 //         )
 //       ).to.be.revertedWith("CANNOT_BE_PROPOSED_AND_APPROVED_BY_SAME_USER");
 
 //       expect(await USDTokenContract.balanceOf(pizzaShop.address)).to.equal(0);
 //       await BondlyContract.connect(alice).approveMovement(
 //         MOVEMENT_ID_TEST,
-//         ORGANIZATION_ID_TEST
+//         PROJECT_SLUG_TEST
 //       );
 //       expect(await USDTokenContract.balanceOf(pizzaShop.address)).to.equal(PIZZA_PRICE);
 //     });
@@ -107,7 +107,7 @@ describe("Bondly App - ", function () {
 //       await BondlyContract.connect(bob).createMovement(
 //         MOVEMENT_ID_TEST,
 //         PROJECT_ID_TEST,
-//         ORGANIZATION_ID_TEST,
+//         PROJECT_SLUG_TEST,
 //         PIZZA_PRICE,
 //         pizzaShop.address
 //       );
@@ -115,19 +115,19 @@ describe("Bondly App - ", function () {
 //       await expect(
 //         BondlyContract.connect(bob).rejectMovement(
 //           MOVEMENT_ID_TEST,
-//           ORGANIZATION_ID_TEST
+//           PROJECT_SLUG_TEST
 //         )
 //       ).to.be.revertedWith("CANNOT_BE_PROPOSED_AND_REJECTED_BY_SAME_USER");
 
 //       expect(await USDTokenContract.balanceOf(pizzaShop.address)).to.equal(0);
 //       await BondlyContract.connect(alice).rejectMovement(
 //         MOVEMENT_ID_TEST,
-//         ORGANIZATION_ID_TEST
+//         PROJECT_SLUG_TEST
 //       );
 //       expect(await USDTokenContract.balanceOf(pizzaShop.address)).to.equal(0);
 //       await BondlyContract.connect(carl).approveMovement(
 //         MOVEMENT_ID_TEST,
-//         ORGANIZATION_ID_TEST
+//         PROJECT_SLUG_TEST
 //       );
 //       expect(await USDTokenContract.balanceOf(pizzaShop.address)).to.equal(PIZZA_PRICE);
 //     });
@@ -145,26 +145,26 @@ describe("Bondly App - ", function () {
 //       await BondlyContract.connect(bob).createMovement(
 //         MOVEMENT_ID_TEST,
 //         PROJECT_ID_TEST,
-//         ORGANIZATION_ID_TEST,
+//         PROJECT_SLUG_TEST,
 //         PIZZA_PRICE,
 //         pizzaShop.address
 //       );
 
-//       const organizationBalance = await BondlyContract.getOrganizationBalance(ORGANIZATION_ID_TEST);
+//       const organizationBalance = await BondlyContract.getOrganizationBalance(PROJECT_SLUG_TEST);
 
 //       expect(await USDTokenContract.balanceOf(pizzaShop.address)).to.equal(0);
 //       await BondlyContract.connect(alice).rejectMovement(
 //         MOVEMENT_ID_TEST,
-//         ORGANIZATION_ID_TEST
+//         PROJECT_SLUG_TEST
 //       );
 //       expect(await USDTokenContract.balanceOf(pizzaShop.address)).to.equal(0);
 //       await BondlyContract.connect(carl).rejectMovement(
 //         MOVEMENT_ID_TEST,
-//         ORGANIZATION_ID_TEST
+//         PROJECT_SLUG_TEST
 //       );
 //       expect(await USDTokenContract.balanceOf(pizzaShop.address)).to.equal(0);
 //       expect(
-//         await BondlyContract.getOrganizationBalance(ORGANIZATION_ID_TEST)
+//         await BondlyContract.getOrganizationBalance(PROJECT_SLUG_TEST)
 //       ).to.equal(
 //         organizationBalance.add(PIZZA_PRICE)
 //       );
