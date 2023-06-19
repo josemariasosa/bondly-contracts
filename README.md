@@ -10,7 +10,7 @@ Bondly was deployed on `Avalanche` 🔺🔻🔺 Fuji testnet:
 
 ```sh
 Addresses of the deployed contracts:
- - Bondly Address:  0xAEb674aa3b8758aEdb22477F3176365CEBE8942E
+ - Bondly Address:  0xb734eb2e370735d2e27e4E133534B6b848e7fBa1
  - USDT dummy:      0x9fea0ED05e44A6b759fa1f9C5228b464Bf31C1cB
 ```
 
