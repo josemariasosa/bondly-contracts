@@ -5,6 +5,7 @@ async function main() {
     const PROJECT_CREATION_FEE = ethers.utils.parseEther('0.01');
     const MOVEMENT_CREATION_FEE = ethers.BigNumber.from(0.00).mul(DECIMALS);
     const CONRADO_ADDRESS = "0x942AeF058cb15C9b8b89B57B4E607d464ed8Cd33";
+    const SANTI_ADDRESS = "0x4BAaB9cd95FD68377827Fe444FcD3C0c28E38146";
   
     // Deployed in AVAX testnet contracts.
     const AVAX_TESTNET_USDT_DUMMY = "0x9fea0ED05e44A6b759fa1f9C5228b464Bf31C1cB";
@@ -15,6 +16,9 @@ async function main() {
 
     const PROJECT_SLUG_TEST_2 = "bondly-irl-meeting-2";
     const MOVEMENT_SLUG_TEST_2 = "dinner-pizza-2";
+
+    const PROJECT_SLUG_TEST_3 = "bondly-irl-meeting-3";
+    const MOVEMENT_SLUG_TEST_3 = "dinner-pizza-3";
   
     const PROJECT_INITIAL_BALANCE_AVAX = ethers.utils.parseEther('0.1');
     const PROJECT_INITIAL_BALANCE_STABLE = ethers.utils.parseEther('240.0');
@@ -72,11 +76,11 @@ async function main() {
   
     console.log("Creating Project");
     const request = await BondlyContract.connect(alice).createProject(
-      "Alpha Centauri",
-      "Even the closest star is a grave voyage away.",
-      "BitModular",
-      PROJECT_SLUG_TEST_2,
-      [alice.address, bob.address, CONRADO_ADDRESS],
+      "Modular Hackathon",
+      "This is a generic description. Have fun Buenos Aires.",
+      "Organization Name",
+      PROJECT_SLUG_TEST_3,
+      [alice.address, SANTI_ADDRESS, CONRADO_ADDRESS],
       2,
       AVAX_TESTNET_USDT_DUMMY,
       { value: PROJECT_CREATION_FEE }
@@ -88,7 +92,7 @@ async function main() {
     // Print the project details in the console.
     console.log(
       "Print the Project: ",
-      await BondlyContract.getProject(PROJECT_SLUG_TEST_2)
+      await BondlyContract.getProject(PROJECT_SLUG_TEST_3)
     );
   
     // console.log("Funding 🤑 Project");
