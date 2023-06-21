@@ -2,12 +2,13 @@
 pragma solidity 0.8.18;
 
 import "./interfaces/IBondly.sol";
+import "./ERC4626Stakable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract Bondly is IBondly, Ownable {
+contract Bondly is IBondly, Ownable, ERC4626Stakable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
@@ -85,6 +86,11 @@ contract Bondly is IBondly, Ownable {
     modifier onlyProjectOwner(string memory _slug) {
         ProjectJson memory project = getProject(_slug);
         if (!_accountInArray(msg.sender, project.owners)) { revert Unauthorized(); }
+        _;
+    }
+
+    modifier onlyAllowed(IERC20 _currency) {
+        _assertAllowedCurrency(address(_currency));
         _;
     }
 
@@ -297,6 +303,23 @@ contract Bondly is IBondly, Ownable {
     function fundProject(string memory _projectSlug, uint256 _amountStable) public payable {
         bytes32 hash_id = keccak256(abi.encodePacked(_projectSlug));
         fundProjectHash(hash_id, _amountStable);
+    }
+
+    function stakeFunds(
+        uint256 _amount,
+        IERC20 _allowedCurrency,
+        string memory _projectSlug
+    ) public override onlyProjectOwner(_projectSlug) onlyAllowed(_allowedCurrency) {
+        IERC4626 _staking = stakingService[_allowedCurrency];
+
+
+        _allowedCurrency.safeTransfer()
+
+            mapping(IERC20 => IERC4626) public stakingService;
+
+    /// The bytes32 are the Bondly Project ID.
+    mapping(bytes32 => mapping(IERC4626 => uint256)) public projectStBalance;
+
     }
 
     // *********************
