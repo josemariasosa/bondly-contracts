@@ -6,6 +6,7 @@ interface IBondly {
     error InvalidBalanceAmount();
     error InvalidSizeLimit();
     error InvalidZeroAddress();
+    error NotEnoughBalance();
     error NotEnoughToPayFee(uint256 _fee);
     error ProjectNotFound(bytes32 _hash_id);
     error Unauthorized();
@@ -16,9 +17,12 @@ interface IBondly {
 
         address[] owners;
         uint32 approvalThreshold;
+        address stableAddress;
 
         uint256 balanceAvax;
         uint256 balanceStable;
-        address stableAddress;
+
+        uint256 balanceStakedStable;
+        uint256 convertedStBalance;
     }
 }

@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract Bondly is IBondly, Ownable, ERC4626Stakable {
     using SafeERC20 for IERC20;
+    using SafeERC20 for IERC4626;
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
     uint32 constant public MAX_CURRENCIES = 3;
@@ -305,21 +306,109 @@ contract Bondly is IBondly, Ownable, ERC4626Stakable {
         fundProjectHash(hash_id, _amountStable);
     }
 
-    function stakeFunds(
+    /// @notice Staking funds are only available for "Active" staking services.
+    function stakeByDeposit(
         uint256 _amount,
-        IERC20 _allowedCurrency,
         string memory _projectSlug
-    ) public override onlyProjectOwner(_projectSlug) onlyAllowed(_allowedCurrency) {
-        IERC4626 _staking = stakingService[_allowedCurrency];
+    ) public override onlyProjectOwner(_projectSlug) {
+        bytes32 hash_id = keccak256(abi.encodePacked(_projectSlug));
 
+        if (!projectHashIds.contains(hash_id)) { revert ProjectNotFound(hash_id); }
+        Project storage project = projects[hash_id];
 
-        _allowedCurrency.safeTransfer()
+        uint256 _balance = project.balanceStable;
+        IERC20 _currency = project.stableAddress;
+        if (_amount > _balance) { revert NotEnoughBalance(); }
+        project.balanceStable = _balance - _amount;
 
-            mapping(IERC20 => IERC4626) public stakingService;
+        // Only active staking services.
+        IERC4626 _staking = getActiveStakingService(_currency);
+        _currency.safeIncreaseAllowance(address(_staking), _amount);
 
-    /// The bytes32 are the Bondly Project ID.
-    mapping(bytes32 => mapping(IERC4626 => uint256)) public projectStBalance;
+        uint256 _shares = _staking.deposit(_amount, address(this));
+        projectStBalance[hash_id] += _shares;
+    }
 
+    /// @dev Not production ready. Please test.
+    function stakeByMint(
+        uint256 _shares,
+        string memory _projectSlug
+    ) public override onlyProjectOwner(_projectSlug) {
+        bytes32 hash_id = keccak256(abi.encodePacked(_projectSlug));
+
+        if (!projectHashIds.contains(hash_id)) { revert ProjectNotFound(hash_id); }
+        Project storage project = projects[hash_id];
+
+        uint256 _balance = project.balanceStable;
+        IERC20 _currency = project.stableAddress;
+
+        // Only active staking services.
+        IERC4626 _staking = getActiveStakingService(_currency);
+        _currency.safeIncreaseAllowance(
+            address(_staking),
+            _staking.convertToAssets(_shares)
+        );
+
+        uint256 _assets = _staking.mint(_shares, address(this));
+        if (_assets > _balance) { revert NotEnoughBalance(); }
+        project.balanceStable = _balance - _assets;
+
+        projectStBalance[hash_id] += _shares;
+    }
+
+    /// @dev Not production ready. Please test.
+    function unstakeByWithdraw(
+        uint256 _amount,
+        string memory _projectSlug
+    ) public override onlyProjectOwner(_projectSlug) {
+        bytes32 hash_id = keccak256(abi.encodePacked(_projectSlug));
+
+        if (!projectHashIds.contains(hash_id)) { revert ProjectNotFound(hash_id); }
+        Project storage project = projects[hash_id];
+
+        (
+            uint256 _stBalance,
+            uint256 _convertedStBalance
+        ) = _getStakedBalance(hash_id, project);
+        IERC20 _currency = project.stableAddress;
+
+        // Withdraw is available even if the staking service is not active.
+        IERC4626 _staking = getStakingService(_currency);
+        uint256 _shares = _staking.withdraw(_amount, address(this), address(this));
+        if (_stBalance < _shares) { revert NotEnoughBalance(); }
+        projectStBalance[hash_id] -= _shares;
+
+        // TODO: Incomplete function.
+    }
+
+    /// @dev Not production ready. Please test.
+    function unstakeByRedeem(
+        uint256 _shares,
+        string memory _projectSlug
+    ) public override onlyProjectOwner(_projectSlug) {
+        bytes32 hash_id = keccak256(abi.encodePacked(_projectSlug));
+
+        if (!projectHashIds.contains(hash_id)) { revert ProjectNotFound(hash_id); }
+        Project storage project = projects[hash_id];
+
+        (
+            uint256 _stBalance,
+            uint256 _convertedStBalance
+        ) = _getStakedBalance(hash_id, project);
+        if (_stBalance < _shares) { revert NotEnoughBalance(); }
+
+        // uint256 _balance = project.balanceStable;
+        IERC20 _currency = project.stableAddress;
+        // project.balanceStable = _balance - _amount;
+
+        // Only active staking services.
+        IERC4626 _staking = getActiveStakingService(_currency);
+        // _currency.safeIncreaseAllowance(address(_staking), _amount);
+
+        uint256 _assets = _staking.redeem(_shares, address(this), address(this));
+        projectStBalance[hash_id] += _shares;
+
+        // TODO: Incomplete function.
     }
 
     // *********************
@@ -370,9 +459,15 @@ contract Bondly is IBondly, Ownable, ERC4626Stakable {
             result.id = project.id;
             result.owners = project.owners;
             result.approvalThreshold = project.approvalThreshold;
+            result.stableAddress = address(project.stableAddress);
             result.balanceAvax = project.balanceAvax;
             result.balanceStable = project.balanceStable;
-            result.stableAddress = address(project.stableAddress);
+            (
+                uint256 _stBalance,
+                uint256 _convertedStBalance
+            ) = _getStakedBalance(hash_id, project);
+            result.balanceStakedStable = _stBalance;
+            result.convertedStBalance = _convertedStBalance;
             return result;
         } else {
             revert ProjectNotFound(hash_id);
@@ -433,6 +528,18 @@ contract Bondly is IBondly, Ownable, ERC4626Stakable {
     // *********************
     // * Private Functions *
     // *********************
+
+    function _getStakedBalance(
+        bytes32 _project_hash_id,
+        Project memory _project
+    ) private view returns (uint256 _stBalance, uint256 _convertedStBalance) {
+        IERC20 _allowedCurrency = _project.stableAddress;
+        StakingService memory _service = stakingService[_allowedCurrency];
+        if (_service.exists) {
+            _stBalance = projectStBalance[_project_hash_id];
+            _convertedStBalance = _service.staking.convertToAssets(_stBalance);
+        }
+    }
 
     function _accountInArray(
         address _account,
