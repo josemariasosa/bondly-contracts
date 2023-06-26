@@ -8,6 +8,9 @@ pragma solidity 0.8.18;
 // import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
+/// @title Bondly Resource Manager v0.3
+/// @author alpha-centauri devs 🛰️
+
 abstract contract ERC4626Stakable {
 
     error StakingNotActive(IERC20 _allowedCurrency);
