@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-interface IBondly {
+interface IBondlyCore {
     error AlreadyAllowed(address _currency);
     error InvalidBalanceAmount();
     error InvalidSizeLimit();
@@ -11,6 +11,8 @@ interface IBondly {
     error ProjectNotFound(bytes32 _hash_id);
     error Unauthorized();
     error UnavailableCurrency(address _currency);
+
+    error Inaccessible();
 
     struct ProjectJson {
         bytes32 id;
@@ -22,7 +24,8 @@ interface IBondly {
         uint256 balanceAvax;
         uint256 balanceStable;
 
-        uint256 balanceStakedStable;
-        uint256 convertedStBalance;
+        ///@notice convertedToAvax gets the price in AVAX.
+        uint256 convertedToAvax;
+        uint256 balanceStakedAvax;
     }
 }

@@ -129,7 +129,7 @@ And last, create a new movement, to be submited to approval.
 
 ```graphql
 mutation {
-  createMovement(movement: {
+  createPayment(movement: {
     title: "Pagar Pizzas"
     description: "Las pizzas mas ricas del mundo"
     amount: 199

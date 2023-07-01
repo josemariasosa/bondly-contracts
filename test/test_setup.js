@@ -111,7 +111,7 @@ async function basicBondlySetupFixture() {
   );
 
   await expect(
-    BondlyContract.connect(bob).createMovement(
+    BondlyContract.connect(bob).createPayment(
       "Pay for the pizza in the event.",
       "Invoice number: WAP-123423432\nWe love pizza",
       MOVEMENT_SLUG_TEST,

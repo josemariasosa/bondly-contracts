@@ -55,7 +55,7 @@ describe("Bondly App - Test Suite for Modular Hackathon 🐷", function () {
         pizzaShop
       } = await loadFixture(basicBondlySetupFixture);
 
-      await BondlyContract.connect(bob).createMovement(
+      await BondlyContract.connect(bob).createPayment(
         "Pay for the pizza in the event.",
         "Invoice number: WAP-123423432\nWe love pizza",
         MOVEMENT_SLUG_TEST,
@@ -84,7 +84,7 @@ describe("Bondly App - Test Suite for Modular Hackathon 🐷", function () {
         pizzaShop
       } = await loadFixture(basicBondlySetupFixture);
 
-      await BondlyContract.connect(bob).createMovement(
+      await BondlyContract.connect(bob).createPayment(
         "Pay for the pizza in the event.",
         "Invoice number: WAP-123423432\nWe love pizza",
         MOVEMENT_SLUG_TEST,
@@ -119,7 +119,7 @@ describe("Bondly App - Test Suite for Modular Hackathon 🐷", function () {
         pizzaShop
       } = await loadFixture(basicBondlySetupFixture);
 
-      await BondlyContract.connect(bob).createMovement(
+      await BondlyContract.connect(bob).createPayment(
         "Pay for the pizza in the event.",
         "Invoice number: WAP-123423432\nWe love pizza",
         MOVEMENT_SLUG_TEST,
@@ -159,7 +159,7 @@ describe("Bondly App - Test Suite for Modular Hackathon 🐷", function () {
         pizzaShop
       } = await loadFixture(basicBondlySetupFixture);
 
-      await BondlyContract.connect(bob).createMovement(
+      await BondlyContract.connect(bob).createPayment(
         "Pay for the pizza in the event.",
         "Invoice number: WAP-123423432\nWe love pizza",
         MOVEMENT_SLUG_TEST,

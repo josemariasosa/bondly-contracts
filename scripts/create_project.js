@@ -111,7 +111,7 @@ async function main() {
     // console.log("Done.");
   
     // console.log("Creating Movement");
-    // const request3 = await BondlyContract.connect(bob).createMovement(
+    // const request3 = await BondlyContract.connect(bob).createPayment(
     //   "Pay for the pizza in the event.",
     //   "Invoice number: WAP-123423432\nWe love pizza",
     //   MOVEMENT_SLUG_TEST,
