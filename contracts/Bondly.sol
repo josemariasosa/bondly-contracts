@@ -2,21 +2,19 @@
 pragma solidity 0.8.18;
 
 import "./interfaces/IBondly.sol";
-import "./ERC4626Stakable.sol";
+// import "./ERC4626Stakable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+// import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-/// @title Bondly Resource Manager v0.3
+/// @title Bondly Resource Manager with Liquid Staking integration v0.4
 /// @author alpha-centauri devs 🛰️
 
-contract Bondly is IBondly, Ownable, ERC4626Stakable {
+contract Bondly is IBondly {
     using SafeERC20 for IERC20;
-    using SafeERC20 for IERC4626;
     using EnumerableSet for EnumerableSet.Bytes32Set;
-
-    uint32 constant public MAX_CURRENCIES = 3;
 
     /// @notice Not for `v0.2.0`.
     // struct Organization {
@@ -26,10 +24,14 @@ contract Bondly is IBondly, Ownable, ERC4626Stakable {
     //     uint256 balance;
     // }
 
-    /// @notice Payed in AVAX - base asset.
-    uint256 immutable public projectCreationFee;
-    uint256 immutable public movementCreationFee;
-    uint256 public collectedFees;
+    address public liquidStaking;
+
+    enum MovementType {
+        Payment,
+        Stake,
+        FastUnstake,
+        Unstake
+    }
 
     struct Project {
         bytes32 id;
@@ -39,27 +41,31 @@ contract Bondly is IBondly, Ownable, ERC4626Stakable {
         string organization;
 
         address[] owners;
-        uint32 approvalThreshold;
 
-        uint256 balanceAvax;
+        uint256 balanceEth;
+        uint256 balanceStakedEth;
         uint256 balanceStable;
         IERC20 stableAddress;
+
+        uint32 approvalThreshold;
     }
 
     struct Movement {
         bytes32 id;
+        MovementType movementType;
 
         string name;
         string description;
 
         bytes32 projectId;
-        uint256 amountAvax;
+        uint256 amountEth;
+        uint256 amountStakedEth;
         uint256 amountStable;
         address payTo;
         address proposedBy;
         address[] approvedBy;
         address[] rejectedBy;
-        bool payed;
+        bool executed;
         bool rejected;
     }
 
@@ -74,8 +80,6 @@ contract Bondly is IBondly, Ownable, ERC4626Stakable {
     mapping(address => bytes32[]) public movementCreator;
     mapping(bytes32 => Movement) public movements;
     EnumerableSet.Bytes32Set private movementHashIds;
-
-    IERC20[] public allowedCurrency;
 
     /// @notice Not for `v0.2.0`.
     // modifier onlyOrganizationOwner(string memory _organizationId) {
@@ -93,31 +97,12 @@ contract Bondly is IBondly, Ownable, ERC4626Stakable {
         _;
     }
 
-    modifier onlyAllowed(IERC20 _currency) {
-        _assertAllowedCurrency(address(_currency));
-        _;
-    }
+    // modifier onlyAllowed(IERC20 _currency) {
+    //     _assertAllowedCurrency(address(_currency));
+    //     _;
+    // }
 
-    constructor(
-        IERC20[] memory _allowedCurrency,
-        uint256 _projectCreationFee,
-        uint256 _movementCreationFee
-    ) {
-        if (_allowedCurrency.length > MAX_CURRENCIES) { revert InvalidSizeLimit(); }
-        for (uint i = 0; i < _allowedCurrency.length; ++i) {
-            address _currency = address(_allowedCurrency[i]);
-            if (_currency == address(0)) { revert InvalidZeroAddress(); }
-
-            if (isAllowed(_currency)) {
-                revert AlreadyAllowed(_currency);
-            } else {
-                allowedCurrency.push(IERC20(_currency));
-            }
-        }
-
-        projectCreationFee = _projectCreationFee;
-        movementCreationFee = _movementCreationFee;
-    }
+    constructor() {}
 
     // *********************
     // * Core 🍒 Functions *
@@ -161,9 +146,7 @@ contract Bondly is IBondly, Ownable, ERC4626Stakable {
         uint32 _approvalThreshold,
         address _currency
     ) public payable {
-        _chargeFee(projectCreationFee);
-
-        if (_currency != address(0)) { _assertAllowedCurrency(_currency); }
+        if (_currency == address(0)) { revert InvalidZeroAddress(); }
         require(_approvalThreshold <= _owners.length, "INCORRECT_APPROVAL_THRESHOLD");
         require(_approvalThreshold > 0, "approvalThreshold_CANNOT_BE_ZERO");
 
@@ -173,8 +156,6 @@ contract Bondly is IBondly, Ownable, ERC4626Stakable {
         Project memory new_project;
         new_project.id = hash_id;
         new_project.approvalThreshold = _approvalThreshold;
-        new_project.balanceAvax = 0;
-        new_project.balanceStable = 0;
         new_project.stableAddress = IERC20(_currency);
         new_project.owners = _owners;
 
@@ -203,15 +184,29 @@ contract Bondly is IBondly, Ownable, ERC4626Stakable {
     }
 
     function createMovement(
+        MovementType _movementType,
         string memory _name,
         string memory _description,
         string memory _movementSlug,
         string memory _projectSlug,
         uint256 _amountStable,
-        uint256 _amountAvax,
+        uint256 _amountEth,
+        uint256 _amountStakedEth,
         address _payTo
     ) external payable onlyProjectOwner(_projectSlug) {
-        _chargeFee(movementCreationFee);
+        if (_movementType == MovementType.Payment) {
+            if (_payTo == address(0)) { revert InvalidZeroAddress(); }
+            if (_amountStable + _amountEth + _amountStakedEth == 0) {
+                revert InvalidMovementZeroAmount();
+            }
+        } else {
+            if (_amountStable > 0) { revert UnavailableStaking(); }
+            if (_movementType == MovementType.Stake) {
+                assert(_amountEth > 0 && _amountStakedEth == 0);
+            } else {
+                assert(_amountEth == 0 && _amountStakedEth > 0);
+            }
+        }
 
         bytes32 hash_id = keccak256(abi.encodePacked(_movementSlug));
         require(!movementHashIds.contains(hash_id), "MOVEMENT_ID_ALREADY_EXISTS");
@@ -220,16 +215,19 @@ contract Bondly is IBondly, Ownable, ERC4626Stakable {
         Project storage project = projects[project_hash_id];
 
         require(project.balanceStable >= _amountStable, "NOT_ENOUGH_PROJECT_FUNDS");
-        require(project.balanceAvax >= _amountAvax, "NOT_ENOUGH_PROJECT_FUNDS");
+        require(project.balanceEth >= _amountEth, "NOT_ENOUGH_PROJECT_FUNDS");
+        require(project.balanceStakedEth >= _amountStakedEth, "NOT_ENOUGH_PROJECT_FUNDS");
 
         project.balanceStable -= _amountStable;
-        project.balanceAvax -= _amountAvax;
+        project.balanceEth -= _amountEth;
+        project.balanceStakedEth -= _amountStakedEth;
 
         Movement memory new_movement;
         new_movement.id = hash_id;
         new_movement.projectId = project_hash_id;
         new_movement.amountStable = _amountStable;
-        new_movement.amountAvax = _amountAvax;
+        new_movement.amountEth = _amountEth;
+        new_movement.amountStakedEth = _amountStakedEth;
         new_movement.payTo = _payTo;
         new_movement.proposedBy = msg.sender;
 
@@ -282,10 +280,11 @@ contract Bondly is IBondly, Ownable, ERC4626Stakable {
     /// @param _hash_id must be from an existing project.
     function fundProjectHash(
         bytes32 _hash_id,
-        uint256 _amountStable
+        uint256 _amountStable,
+        uint256 _amountStakedEth
     ) public payable {
         require(projectHashIds.contains(_hash_id));
-        uint256 _amountAvax = msg.value;
+        uint256 _amountEth = msg.value;
         Project storage project = projects[_hash_id];
 
         bool _amountUpdated;
@@ -295,8 +294,14 @@ contract Bondly is IBondly, Ownable, ERC4626Stakable {
             _amountUpdated = true;
         }
 
-        if (_amountAvax > 0) {
-            project.balanceAvax += _amountAvax;
+        if (_amountStakedEth > 0) {
+            IERC20(liquidStaking).safeTransferFrom(msg.sender, address(this), _amountStakedEth);
+            project.balanceStakedEth += _amountStakedEth;
+            _amountUpdated = true;
+        }
+
+        if (_amountEth > 0) {
+            project.balanceEth += _amountEth;
             _amountUpdated = true;
         }
 
@@ -304,114 +309,13 @@ contract Bondly is IBondly, Ownable, ERC4626Stakable {
         require(_amountUpdated);
     }
 
-    function fundProject(string memory _projectSlug, uint256 _amountStable) public payable {
+    function fundProject(
+        string memory _projectSlug,
+        uint256 _amountStable,
+        uint256 _amountStakedEth
+    ) public payable {
         bytes32 hash_id = keccak256(abi.encodePacked(_projectSlug));
-        fundProjectHash(hash_id, _amountStable);
-    }
-
-    /// @notice Staking funds are only available for "Active" staking services.
-    function stakeByDeposit(
-        uint256 _amount,
-        string memory _projectSlug
-    ) public override onlyProjectOwner(_projectSlug) {
-        bytes32 hash_id = keccak256(abi.encodePacked(_projectSlug));
-
-        if (!projectHashIds.contains(hash_id)) { revert ProjectNotFound(hash_id); }
-        Project storage project = projects[hash_id];
-
-        uint256 _balance = project.balanceStable;
-        IERC20 _currency = project.stableAddress;
-        if (_amount > _balance) { revert NotEnoughBalance(); }
-        project.balanceStable = _balance - _amount;
-
-        // Only active staking services.
-        IERC4626 _staking = getActiveStakingService(_currency);
-        _currency.safeIncreaseAllowance(address(_staking), _amount);
-
-        uint256 _shares = _staking.deposit(_amount, address(this));
-        projectStBalance[hash_id] += _shares;
-    }
-
-    /// @dev Not production ready. Please test.
-    function stakeByMint(
-        uint256 _shares,
-        string memory _projectSlug
-    ) public override onlyProjectOwner(_projectSlug) {
-        bytes32 hash_id = keccak256(abi.encodePacked(_projectSlug));
-
-        if (!projectHashIds.contains(hash_id)) { revert ProjectNotFound(hash_id); }
-        Project storage project = projects[hash_id];
-
-        uint256 _balance = project.balanceStable;
-        IERC20 _currency = project.stableAddress;
-
-        // Only active staking services.
-        IERC4626 _staking = getActiveStakingService(_currency);
-        _currency.safeIncreaseAllowance(
-            address(_staking),
-            _staking.convertToAssets(_shares)
-        );
-
-        uint256 _assets = _staking.mint(_shares, address(this));
-        if (_assets > _balance) { revert NotEnoughBalance(); }
-        project.balanceStable = _balance - _assets;
-
-        projectStBalance[hash_id] += _shares;
-    }
-
-    /// @dev Not production ready. Please test.
-    function unstakeByWithdraw(
-        uint256 _amount,
-        string memory _projectSlug
-    ) public override onlyProjectOwner(_projectSlug) {
-        bytes32 hash_id = keccak256(abi.encodePacked(_projectSlug));
-
-        if (!projectHashIds.contains(hash_id)) { revert ProjectNotFound(hash_id); }
-        Project storage project = projects[hash_id];
-
-        (
-            uint256 _stBalance,
-            uint256 _convertedStBalance
-        ) = _getStakedBalance(hash_id, project);
-        IERC20 _currency = project.stableAddress;
-
-        // Withdraw is available even if the staking service is not active.
-        IERC4626 _staking = getStakingService(_currency);
-        uint256 _shares = _staking.withdraw(_amount, address(this), address(this));
-        if (_stBalance < _shares) { revert NotEnoughBalance(); }
-        projectStBalance[hash_id] -= _shares;
-
-        // TODO: Incomplete function.
-    }
-
-    /// @dev Not production ready. Please test.
-    function unstakeByRedeem(
-        uint256 _shares,
-        string memory _projectSlug
-    ) public override onlyProjectOwner(_projectSlug) {
-        bytes32 hash_id = keccak256(abi.encodePacked(_projectSlug));
-
-        if (!projectHashIds.contains(hash_id)) { revert ProjectNotFound(hash_id); }
-        Project storage project = projects[hash_id];
-
-        (
-            uint256 _stBalance,
-            uint256 _convertedStBalance
-        ) = _getStakedBalance(hash_id, project);
-        if (_stBalance < _shares) { revert NotEnoughBalance(); }
-
-        // uint256 _balance = project.balanceStable;
-        IERC20 _currency = project.stableAddress;
-        // project.balanceStable = _balance - _amount;
-
-        // Only active staking services.
-        IERC4626 _staking = getActiveStakingService(_currency);
-        // _currency.safeIncreaseAllowance(address(_staking), _amount);
-
-        uint256 _assets = _staking.redeem(_shares, address(this), address(this));
-        projectStBalance[hash_id] += _shares;
-
-        // TODO: Incomplete function.
+        fundProjectHash(hash_id, _amountStable, _amountStakedEth);
     }
 
     // *********************
@@ -463,14 +367,11 @@ contract Bondly is IBondly, Ownable, ERC4626Stakable {
             result.owners = project.owners;
             result.approvalThreshold = project.approvalThreshold;
             result.stableAddress = address(project.stableAddress);
-            result.balanceAvax = project.balanceAvax;
+            result.balanceEth = project.balanceEth;
+            result.balanceStakedEth = project.balanceStakedEth;
             result.balanceStable = project.balanceStable;
-            (
-                uint256 _stBalance,
-                uint256 _convertedStBalance
-            ) = _getStakedBalance(hash_id, project);
-            result.balanceStakedStable = _stBalance;
-            result.convertedStBalance = _convertedStBalance;
+            result.convertedStakedBalance = IERC4626(
+                liquidStaking).convertToAssets(project.balanceStakedEth);
             return result;
         } else {
             revert ProjectNotFound(hash_id);
@@ -486,15 +387,20 @@ contract Bondly is IBondly, Ownable, ERC4626Stakable {
         return getProject(_slug).balanceStable;
     }
 
-    function getProjectBalanceAvax(string memory _slug) public view returns (uint256) {
-        return getProject(_slug).balanceAvax;
+    function getProjectBalanceEth(string memory _slug) public view returns (uint256) {
+        return getProject(_slug).balanceEth;
+    }
+
+    function getProjectBalanceStakedEth(string memory _slug) public view returns (uint256) {
+        return getProject(_slug).balanceStakedEth;
     }
 
     function getProjectBalance(
         string memory _slug
-    ) public view returns (uint256 _stable, uint256 _avax) {
+    ) public view returns (uint256 _stable, uint256 _eth, uint256 _stakedEth) {
         _stable = getProjectBalanceStable(_slug);
-        _avax = getProjectBalanceAvax(_slug);
+        _eth = getProjectBalanceEth(_slug);
+        _stakedEth = getProjectBalanceEth(_slug);
     }
 
     function getProjectThreshold(string memory _slug) public view returns (
@@ -518,31 +424,9 @@ contract Bondly is IBondly, Ownable, ERC4626Stakable {
         return movementHashIds.length();
     }
 
-    function isAllowed(address _currency) public view returns (bool) {
-        IERC20[] memory _allowedCurrency = allowedCurrency;
-        address[] memory _currencies = new address[](_allowedCurrency.length);
-
-        for (uint i = 0; i < _allowedCurrency.length; i++) {
-            _currencies[i] = address(_allowedCurrency[i]);
-        }
-        return _accountInArray(_currency, _currencies);
-    }
-
     // *********************
     // * Private Functions *
     // *********************
-
-    function _getStakedBalance(
-        bytes32 _project_hash_id,
-        Project memory _project
-    ) private view returns (uint256 _stBalance, uint256 _convertedStBalance) {
-        IERC20 _allowedCurrency = _project.stableAddress;
-        StakingService memory _service = stakingService[_allowedCurrency];
-        if (_service.exists) {
-            _stBalance = projectStBalance[_project_hash_id];
-            _convertedStBalance = _service.staking.convertToAssets(_stBalance);
-        }
-    }
 
     function _accountInArray(
         address _account,
@@ -568,42 +452,70 @@ contract Bondly is IBondly, Ownable, ERC4626Stakable {
             uint256 threshold,
             address stableAddress
         ) = getProjectThreshold(_projectSlug);
-        // If the movement was already payed or rejected, then there is nothing to evaluate.
-        if (!movement.payed && !movement.rejected) {
+        // If the movement was already executed or rejected, then there is nothing to evaluate.
+        if (!movement.executed && !movement.rejected) {
             if (movement.approvedBy.length >= (threshold - 1)) {
-                movement.payed = true;
-
-                // Stable coin: USD, MXN, ARG.
-                uint256 _amountStable = movement.amountStable;
-                if (_amountStable > 0) {
-                    IERC20(stableAddress).safeTransfer(movement.payTo, _amountStable);
+                movement.executed = true;
+                if (movement.movementType == MovementType.Payment) {
+                    _executePayment(movement, stableAddress);
+                } else if (movement.movementType == MovementType.Stake) {
+                    _executeStake(movement);
+                } else if (movement.movementType == MovementType.Unstake) {
+                    _executeUnstake(movement);
+                } else if (movement.movementType == MovementType.FastUnstake) {
+                    _executeFastUnstake(movement);
                 }
 
-                uint256 _amountAvax = movement.amountAvax;
-                if (_amountAvax > 0) {
-                    payable(movement.payTo).transfer(_amountAvax);
-                }
             } else if (movement.rejectedBy.length > (totalOwners - threshold)) {
                 movement.rejected = true;
                 bytes32 hash_id = keccak256(abi.encodePacked(_projectSlug));
                 Project storage project = projects[hash_id];
                 project.balanceStable += movement.amountStable;
-                project.balanceAvax += movement.amountAvax;
+                project.balanceEth += movement.amountEth;
+                project.balanceStakedEth += movement.amountStakedEth;
             }
         }
     }
 
-    function _assertAllowedCurrency(address _currency) private view {
-        if (!isAllowed(_currency)) { revert UnavailableCurrency(_currency); }
+    function _executeStake(Movement memory movement) private {
+        (bool success, ) = liquidStaking.call{value: movement.amountEth}(
+            abi.encodeWithSignature("depositEth()")
+        );
+        if (!success) { revert NotSuccessfulOperation(); }
     }
 
-    function _chargeFee(uint256 _fee) private {
-        if (_fee > msg.value) { revert NotEnoughToPayFee(_fee); }
+    function _executeUnstake(Movement memory movement) private {
+        IERC4626(liquidStaking).redeem(
+            movement.amountStakedEth,
+            address(this),
+            address(this)
+        );
+    }
 
-        collectedFees += _fee;
-        uint256 amountToReturn = msg.value - _fee;
-        if (amountToReturn > 0) {
-            payable(msg.sender).transfer(amountToReturn);
+    /// TODO: not implemented
+    function _executeFastUnstake(Movement memory movement) private {
+        IERC4626(liquidStaking).redeem(
+            movement.amountStakedEth,
+            address(this),
+            address(this)
+        );
+    }
+
+    function _executePayment(Movement memory movement, address stableAddress) private {
+        // Stable coin: USD, MXN, ARG.
+        uint256 _amountStable = movement.amountStable;
+        if (_amountStable > 0) {
+            IERC20(stableAddress).safeTransfer(movement.payTo, _amountStable);
+        }
+
+        uint256 _amountStakedEth = movement.amountStakedEth;
+        if (_amountStakedEth > 0) {
+            IERC20(liquidStaking).safeTransfer(movement.payTo, _amountStakedEth);
+        }
+
+        uint256 _amountEth = movement.amountEth;
+        if (_amountEth > 0) {
+            payable(movement.payTo).transfer(_amountEth);
         }
     }
 }

@@ -11,6 +11,9 @@ interface IBondly {
     error ProjectNotFound(bytes32 _hash_id);
     error Unauthorized();
     error UnavailableCurrency(address _currency);
+    error InvalidMovementZeroAmount();
+    error UnavailableStaking();
+    error NotSuccessfulOperation();
 
     struct ProjectJson {
         bytes32 id;
@@ -19,10 +22,11 @@ interface IBondly {
         uint32 approvalThreshold;
         address stableAddress;
 
-        uint256 balanceAvax;
+        uint256 balanceEth;
+        uint256 balanceStakedEth;
         uint256 balanceStable;
 
-        uint256 balanceStakedStable;
-        uint256 convertedStBalance;
+        /// @notice This amount is an approx representation in Eth.
+        uint256 convertedStakedBalance;
     }
 }
