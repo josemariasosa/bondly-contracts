@@ -6,14 +6,14 @@ interface IBondly {
     error InvalidBalanceAmount();
     error InvalidSizeLimit();
     error InvalidZeroAddress();
+    error InvalidZeroAmount();
     error NotEnoughBalance();
     error NotEnoughToPayFee(uint256 _fee);
+    error NotSuccessfulOperation();
     error ProjectNotFound(bytes32 _hash_id);
     error Unauthorized();
     error UnavailableCurrency(address _currency);
-    error InvalidMovementZeroAmount();
     error UnavailableStaking();
-    error NotSuccessfulOperation();
 
     struct ProjectJson {
         bytes32 id;

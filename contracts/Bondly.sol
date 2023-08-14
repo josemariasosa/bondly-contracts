@@ -287,21 +287,26 @@ contract Bondly is IBondly {
         uint256 _amountEth = msg.value;
         Project storage project = projects[_hash_id];
 
+        if (_amountStable + _amountEth + _amountStakedEth == 0) {
+            revert InvalidMovementZeroAmount();
+        }
+
+        project.balanceStable += _amountStable;
+        project.balanceStakedEth += _amountStakedEth;
+        project.balanceEth += _amountEth;
+
         bool _amountUpdated;
         if (_amountStable > 0) {
             project.stableAddress.safeTransferFrom(msg.sender, address(this), _amountStable);
-            project.balanceStable += _amountStable;
             _amountUpdated = true;
         }
 
         if (_amountStakedEth > 0) {
             IERC20(liquidStaking).safeTransferFrom(msg.sender, address(this), _amountStakedEth);
-            project.balanceStakedEth += _amountStakedEth;
             _amountUpdated = true;
         }
 
         if (_amountEth > 0) {
-            project.balanceEth += _amountEth;
             _amountUpdated = true;
         }
 
