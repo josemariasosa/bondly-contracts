@@ -19,5 +19,11 @@ module.exports = {
         process.env.CARL_PRIVATE_KEY,
       ]
     },
+  },
+  settings: {
+    optimizer: {
+      enabled: true,
+      runs: 200  // Adjust this number according to your contract's needs
+    }
   }
 };

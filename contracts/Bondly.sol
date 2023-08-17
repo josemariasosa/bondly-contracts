@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 // import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/interfaces/IERC4626.sol";
+// import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 /// @title Bondly Resource Manager with Liquid Staking integration v0.4
 /// @author alpha-centauri devs 🛰️
@@ -15,6 +16,8 @@ import "@openzeppelin/contracts/interfaces/IERC4626.sol";
 contract Bondly is IBondly {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
+
+    // AggregatorV3Interface internal dataFeed;
 
     /// @notice Not for `v0.2.0`.
     // struct Organization {
@@ -78,6 +81,7 @@ contract Bondly is IBondly {
     EnumerableSet.Bytes32Set private projectHashIds;
 
     mapping(address => bytes32[]) public movementCreator;
+    mapping(bytes32 => bytes32[]) public projectMovement;
     mapping(bytes32 => Movement) public movements;
     EnumerableSet.Bytes32Set private movementHashIds;
 
@@ -102,7 +106,26 @@ contract Bondly is IBondly {
     //     _;
     // }
 
-    constructor() {}
+    /// Network: Avax Fuji Testnet
+    /// Aggregator: ETH/USD
+    /// Address: 0x86d67c3D38D2bCeE722E601025C25a575021c6EA
+    /// https://docs.chain.link/data-feeds/price-feeds/addresses?network=avalanche#Avalanche%20Testnet
+    constructor() {
+        // dataFeed = AggregatorV3Interface(
+        //     0x86d67c3D38D2bCeE722E601025C25a575021c6EA
+        // );
+    }
+
+    // function getLatestData() public view returns (int256) {
+    //     (
+    //         /* uint80 roundID */,
+    //         int256 answer,
+    //         /*uint startedAt*/,
+    //         /*uint timeStamp*/,
+    //         /*uint80 answeredInRound*/
+    //     ) = dataFeed.latestRoundData();
+    //     return answer;
+    // }
 
     // *********************
     // * Core 🍒 Functions *
@@ -132,6 +155,10 @@ contract Bondly is IBondly {
     //     organizationHashIds.add(hash_id);
     // }
 
+    function getAllProjectHashId(uint256 _index) public view returns (bytes32) {
+        return projectHashIds.at(_index);
+    }
+
     /// @notice The project slug MUST be unique.
     /// @param _slug a URL-friendly version of a string, example "hello-world".
     /// @param _owners do not forget to add the caller in the owners list.
@@ -147,11 +174,14 @@ contract Bondly is IBondly {
         address _currency
     ) public payable {
         if (_currency == address(0)) { revert InvalidZeroAddress(); }
-        require(_approvalThreshold <= _owners.length, "INCORRECT_APPROVAL_THRESHOLD");
-        require(_approvalThreshold > 0, "approvalThreshold_CANNOT_BE_ZERO");
+        // require(_approvalThreshold <= _owners.length, "INCORRECT_APPROVAL_THRESHOLD");
+        if (_approvalThreshold > _owners.length) { revert GenericError(); }
+        // require(_approvalThreshold > 0, "approvalThreshold_CANNOT_BE_ZERO");
+        if (_approvalThreshold == 0) { revert InvalidZeroAmount(); }
 
         bytes32 hash_id = keccak256(abi.encodePacked(_slug));
-        require(!projectHashIds.contains(hash_id), "PROJECT_ID_ALREADY_EXISTS");
+        // require(!projectHashIds.contains(hash_id), "PROJECT_ID_ALREADY_EXISTS");
+        if (projectHashIds.contains(hash_id)) { revert GenericError(); }
 
         Project memory new_project;
         new_project.id = hash_id;
@@ -209,14 +239,18 @@ contract Bondly is IBondly {
         }
 
         bytes32 hash_id = keccak256(abi.encodePacked(_movementSlug));
-        require(!movementHashIds.contains(hash_id), "MOVEMENT_ID_ALREADY_EXISTS");
+        // require(!movementHashIds.contains(hash_id), "MOVEMENT_ID_ALREADY_EXISTS");
+        if (movementHashIds.contains(hash_id)) { revert GenericError(); }
 
         bytes32 project_hash_id = keccak256(abi.encodePacked(_projectSlug));
         Project storage project = projects[project_hash_id];
 
-        require(project.balanceStable >= _amountStable, "NOT_ENOUGH_PROJECT_FUNDS");
-        require(project.balanceEth >= _amountEth, "NOT_ENOUGH_PROJECT_FUNDS");
-        require(project.balanceStakedEth >= _amountStakedEth, "NOT_ENOUGH_PROJECT_FUNDS");
+        // require(project.balanceStable >= _amountStable, "NOT_ENOUGH_PROJECT_FUNDS");
+        if (project.balanceStable < _amountStable) { revert NotEnoughBalance(); }
+        // require(project.balanceEth >= _amountEth, "NOT_ENOUGH_PROJECT_FUNDS");
+        if (project.balanceEth < _amountEth) { revert NotEnoughBalance(); }
+        // require(project.balanceStakedEth >= _amountStakedEth, "NOT_ENOUGH_PROJECT_FUNDS");
+        if (project.balanceStakedEth < _amountStakedEth) { revert NotEnoughBalance(); }
 
         project.balanceStable -= _amountStable;
         project.balanceEth -= _amountEth;
@@ -243,6 +277,9 @@ contract Bondly is IBondly {
             bytes32[] storage _projects = movementCreator[_owners[i]];
             _projects.push(hash_id);
         }
+
+        bytes32[] storage _movements = projectMovement[project_hash_id];
+        _movements.push(hash_id);
     }
 
     function approveMovement(
