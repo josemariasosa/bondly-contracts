@@ -412,8 +412,8 @@ contract Bondly is IBondly {
             result.balanceEth = project.balanceEth;
             result.balanceStakedEth = project.balanceStakedEth;
             result.balanceStable = project.balanceStable;
-            result.convertedStakedBalance = IERC4626(
-                liquidStaking).convertToAssets(project.balanceStakedEth);
+            // result.convertedStakedBalance = IERC4626(
+            //     liquidStaking).convertToAssets(project.balanceStakedEth);
             return result;
         } else {
             revert ProjectNotFound(hash_id);
